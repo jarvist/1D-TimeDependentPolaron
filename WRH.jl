@@ -65,7 +65,7 @@ function DipolesFromDensity(dipoles,density)
     dipoles
 end
 
-using PyPlot 
+using UnicodePlots # Take it back to the 80s
 
 function main()
     # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
@@ -86,14 +86,13 @@ function main()
     ## Testing
     dipoles=zeros(N)
 
-    plot(dipoles)
     # Self consistent field loop
     for i in 1:100
         @printf("\n\tSCF loop: %d\n",i)
         S=SiteEnergyFromDipoles(dipoles)
         println("Site energies: ",S)
 
-        plot(S)
+        myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
 
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
         psi=eigvecs(H)[:,1] # gnd state
@@ -101,15 +100,18 @@ function main()
         density=psi.^2
         println("Electron density: ",density)
         
-        plot(density)
+        lineplot!(myplot,density,name="Electon Density",color=:yellow)
         
         dipoles=DipolesFromDensity(dipoles,density)
 
-        plot(dipoles)
+        lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
 
         println("Dipoles: ",dipoles)
+
+        if (i%10==0)
+            print(myplot)
+        end
     end
 end
 
 main() # Party like it's C99!
-show()
