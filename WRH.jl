@@ -13,7 +13,7 @@ const Edisorder=0.0 # Energetic disorder eV, Gaussian form
 const Jdisorder=0.0 # Transfer integral disorder, eV. 
 
 # Model setup
-const J0=0.8
+const J0=0.1
 modelJ(theta) = J0*cos(theta*pi/180.0).^2
 
 const T=300
@@ -51,16 +51,19 @@ function SiteEnergyFromDipoles(dipoles)
     S
 end
 
-const dampening=0.02
+const dampening=0.5 # How much to update in each step
 
 function DipolesFromDensity(dipoles,density)
     for i in 1:N
+        relaxeddipole=0
         for j in 1:N
             if (j==i)
                 continue # avoid infinite self energies
             end
-            dipoles[i]+=dampening*density[j]/(i-j)^1 # How much do the dipoles respond to the electron density?
+            relaxeddipole+=density[j]/(i-j)^1 # How much do the dipoles respond to the electron density?
         end
+
+        dipoles[i]+=dampening*(relaxeddipole-dipoles[i]) # Approaches the infinite time limit via Zeno's dichotomy
     end
     dipoles
 end
