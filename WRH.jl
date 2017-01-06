@@ -49,10 +49,15 @@ function SiteEnergyFromDipoles(dipoles)
     S
 end
 
+const dampening=0.1
+
 function DipolesFromDensity(dipoles,density)
     for i in 1:N
         for j in 1:N
-            dipoles[i]+=density[j]/(i-j)^1 # How much do the dipoles respond to the electron density?
+            if (j==i)
+                continue # avoid infinite self energies
+            end
+            dipoles[i]+=dampening*density[j]/(i-j)^1 # How much do the dipoles respond to the electron density?
         end
     end
     dipoles
@@ -76,15 +81,20 @@ function main()
 
     ## Testing
     dipoles=zeros(N)
-    S=SiteEnergyFromDipoles(dipoles)
-    println("Site energies: ",S)
-    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
-    psi=eigvecs(H)[1,:] # gnd state
-    println("Psi: ",psi)
-    density=psi.^2
-    println("Electron density: ",density)
-    dipoles=DipolesFromDensity(dipoles,density)
-    println("Dipoles: ",dipoles)
+
+    # Self consistent field loop
+    for i in 1:100
+        @printf("\n\tSCF loop: %d\n",i)
+        S=SiteEnergyFromDipoles(dipoles)
+        println("Site energies: ",S)
+        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
+        psi=eigvecs(H)[1,:] # gnd state
+        println("Psi: ",psi)
+        density=psi.^2
+        println("Electron density: ",density)
+        dipoles=DipolesFromDensity(dipoles,density)
+        println("Dipoles: ",dipoles)
+    end
 end
 
 main() # Party like it's C99!
