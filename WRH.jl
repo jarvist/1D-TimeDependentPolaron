@@ -23,11 +23,9 @@ const B=1/(T*kB) #300K * k_B in eV
 # Generate a random tridiagonal TightBinding Hamiltonian, in a form suitable for the Sturm sequence
 # Given: 
 #   SiteEnergy - scalar eV; reference for site energy of monomer
-#   disorder - scalar eV ; amount of Gaussian / normal energetic disorder, for trace of Hamiltonian
+#   Edisorder - scalar eV ; amount of Gaussian / normal energetic disorder, for trace of Hamiltonian
+#   Jdisorder - scalar eV
 #   modelJ(theta) - function, takes degrees, returns eV ; model for the transfer integral (e.g. E=(J0*cos(thetas*pi/180)).^2 )
-#   B - scalar (units?); Thermodynamic (B)eta, used to populate Probability Density Function
-#   Z - scalar (units?); Partition function, weighting for absolute Boltzmann populations
-#   U - function(theta angle); Free energy function, used to generate Bolztmann populations
 #   N - integar ; size of diagonal of Hamiltonian
 function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
 # Random Trace / diagonal elements
@@ -35,6 +33,29 @@ function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
 # Random Off-diag elements
     E=modelJ(0) + Jdisorder*randn(N-1)
     return (S,E)
+end
+
+function SiteEnergyFromDipoles(dipoles)
+    S=zeros(N)
+    for i in 1:N
+        for j in 1:N
+            if (j==i) 
+                continue # avoid infinity self energies
+            end
+            S[i]+=dipoles[j]/(i-j)^3 # Contribution to site energy (1 e- at site) from dipoles
+        end
+#        @printf("Site: i %d SiteEnergy: S[i] %f\n",i,S[i])
+    end
+    S
+end
+
+function DipolesFromDensity(dipoles,density)
+    for i in 1:N
+        for j in 1:N
+            dipoles[i]+=density[j]/(i-j)^1 # How much do the dipoles respond to the electron density?
+        end
+    end
+    dipoles
 end
 
 function main()
@@ -49,6 +70,21 @@ function main()
     println(eigvals(H))
     println("Min Eigenvalue")
     println(eigmin(H))
+
+    println("Eig Vecs")
+    println(eigvecs(H))
+
+    ## Testing
+    dipoles=zeros(N)
+    S=SiteEnergyFromDipoles(dipoles)
+    println("Site energies: ",S)
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
+    psi=eigvecs(H)[1,:] # gnd state
+    println("Psi: ",psi)
+    density=psi.^2
+    println("Electron density: ",density)
+    dipoles=DipolesFromDensity(dipoles,density)
+    println("Dipoles: ",dipoles)
 end
 
 main() # Party like it's C99!
