@@ -35,6 +35,8 @@ function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
     return (S,E)
 end
 
+const dipolestrength=0.2 
+
 function SiteEnergyFromDipoles(dipoles)
     S=zeros(N)
     for i in 1:N
@@ -42,14 +44,14 @@ function SiteEnergyFromDipoles(dipoles)
             if (j==i) 
                 continue # avoid infinity self energies
             end
-            S[i]+=dipoles[j]/(i-j)^3 # Contribution to site energy (1 e- at site) from dipoles
+            S[i]+=dipolestrength*dipoles[j]/(i-j)^3 # Contribution to site energy (1 e- at site) from dipoles
         end
 #        @printf("Site: i %d SiteEnergy: S[i] %f\n",i,S[i])
     end
     S
 end
 
-const dampening=0.1
+const dampening=0.02
 
 function DipolesFromDensity(dipoles,density)
     for i in 1:N
@@ -62,6 +64,8 @@ function DipolesFromDensity(dipoles,density)
     end
     dipoles
 end
+
+using PyPlot 
 
 function main()
     # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
@@ -82,20 +86,30 @@ function main()
     ## Testing
     dipoles=zeros(N)
 
+    plot(dipoles)
     # Self consistent field loop
     for i in 1:100
         @printf("\n\tSCF loop: %d\n",i)
         S=SiteEnergyFromDipoles(dipoles)
         println("Site energies: ",S)
+
+        plot(S)
+
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
-        psi=eigvecs(H)[1,:] # gnd state
+        psi=eigvecs(H)[:,1] # gnd state
         println("Psi: ",psi)
         density=psi.^2
         println("Electron density: ",density)
+        
+        plot(density)
+        
         dipoles=DipolesFromDensity(dipoles,density)
+
+        plot(dipoles)
+
         println("Dipoles: ",dipoles)
     end
 end
 
 main() # Party like it's C99!
-
+show()
