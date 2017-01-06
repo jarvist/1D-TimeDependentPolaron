@@ -34,9 +34,6 @@ function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
     D=SiteEnergy + Edisorder*randn(N)
 # Random Off-diag elements
     E=modelJ(0) + Jdisorder*randn(N-1)
-
-# Squared (element wise) for the Sturm algorithm...
-    E= E.^2
     return (D,E)
 end
 
@@ -44,7 +41,7 @@ end
 D,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
 
 #println("Full square matrix H");
-H=diagm(E.^0.5,-1)+diagm(D)+diagm(E.^0.5,1) #build full matrix from diagonal elements; for comparison
+H=diagm(E,-1)+diagm(D)+diagm(E,1) #build full matrix from diagonal elements; for comparison
 println(H)
 
 println("Eigenvalues")
