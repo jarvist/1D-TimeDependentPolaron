@@ -5,19 +5,19 @@
 println("Time is said to have only one dimension, and space to have three dimensions. - William Rowan Hamilton")
 
 #Bolztmann's constant in units of eV - thereby all the potentials (of functional form or tabulated data) in units eV
-kB=8.6173324E-5
+const kB=8.6173324E-5
 
-N=10^1 # Length of tridiagonal Hamiltonian constructed; larger value -> better statistics, slower runtime
+const N=10^1 # Length of tridiagonal Hamiltonian constructed; larger value -> better statistics, slower runtime
 
-Edisorder=0.0 # Energetic disorder eV, Gaussian form
-Jdisorder=0.0 # Transfer integral disorder, eV. 
+const Edisorder=0.0 # Energetic disorder eV, Gaussian form
+const Jdisorder=0.0 # Transfer integral disorder, eV. 
 
 # Model setup
-J0=0.8
+const J0=0.8
 modelJ(theta) = J0*cos(theta*pi/180.0).^2
 
-T=300
-B=1/(T*kB) #300K * k_B in eV
+const T=300
+const B=1/(T*kB) #300K * k_B in eV
 
 ### Liberated from 'Sturm': https://github.com/jarvist/Teclo/blob/master/Sturm.jl ###
 # Generate a random tridiagonal TightBinding Hamiltonian, in a form suitable for the Sturm sequence
@@ -37,15 +37,19 @@ function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
     return (D,E)
 end
 
-# generates separate (D)iagonal and (E)-offdiagonal terms of Tight Binding Hamiltonian
-D,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
+function main()
+    # generates separate (D)iagonal and (E)-offdiagonal terms of Tight Binding Hamiltonian
+    D,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
 
-#println("Full square matrix H");
-H=diagm(E,-1)+diagm(D)+diagm(E,1) #build full matrix from diagonal elements; for comparison
-println(H)
+    #println("Full square matrix H");
+    H=diagm(E,-1)+diagm(D)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+    println(H)
 
-println("Eigenvalues")
-println(eigvals(H))
-println("Min Eigenvalue")
-println(eigmin(H))
+    println("Eigenvalues")
+    println(eigvals(H))
+    println("Min Eigenvalue")
+    println(eigmin(H))
+end
+
+main() # Party like it's C99!
 
