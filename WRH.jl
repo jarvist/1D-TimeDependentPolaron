@@ -31,18 +31,18 @@ const B=1/(T*kB) #300K * k_B in eV
 #   N - integar ; size of diagonal of Hamiltonian
 function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
 # Random Trace / diagonal elements
-    D=SiteEnergy + Edisorder*randn(N)
+    S=SiteEnergy + Edisorder*randn(N)
 # Random Off-diag elements
     E=modelJ(0) + Jdisorder*randn(N-1)
-    return (D,E)
+    return (S,E)
 end
 
 function main()
-    # generates separate (D)iagonal and (E)-offdiagonal terms of Tight Binding Hamiltonian
-    D,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
+    # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
+    S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
 
     #println("Full square matrix H");
-    H=diagm(E,-1)+diagm(D)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     println(H)
 
     println("Eigenvalues")
