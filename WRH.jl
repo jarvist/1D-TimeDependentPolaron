@@ -68,6 +68,18 @@ function DipolesFromDensity(dipoles,density)
     dipoles
 end
 
+function AdiabaticPropagation(dipoles,E)
+    S=SiteEnergyFromDipoles(dipoles)
+
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
+    psi=eigvecs(H)[:,1] # gnd state
+    
+    density=psi.^2
+    dipoles=DipolesFromDensity(dipoles,density)
+
+    return S,psi,density,dipoles
+end
+
 using UnicodePlots # Take it back to the 80s
 
 function main()
@@ -90,30 +102,23 @@ function main()
     dipoles=zeros(N)
 
     # Self consistent field loop
-    for i in 1:100
+    for i in 1:10
         @printf("\n\tSCF loop: %d\n",i)
-        S=SiteEnergyFromDipoles(dipoles)
+       
+        S,psi,density,dipoles = AdiabaticPropagation(dipoles,E)
+
         println("Site energies: ",S)
-
-        myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
-
-        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
-        psi=eigvecs(H)[:,1] # gnd state
         println("Psi: ",psi)
-        density=psi.^2
         println("Electron density: ",density)
-        
-        lineplot!(myplot,density,name="Electon Density",color=:yellow)
-        
-        dipoles=DipolesFromDensity(dipoles,density)
-
-        lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
-
         println("Dipoles: ",dipoles)
 
-        if (i%10==0)
+        myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
+        lineplot!(myplot,density,name="Electon Density",color=:yellow)
+        lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
+
+#        if (i%10==0)
             print(myplot)
-        end
+#        end
     end
 end
 
