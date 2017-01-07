@@ -80,6 +80,14 @@ function AdiabaticPropagation(dipoles,E)
     return S,psi,density,dipoles
 end
 
+const hbar=1.0
+function TimeDependentPropagation(psi,H,dt)
+    psi=exp(-im*H*dt/hbar)*psi
+    println("Pre normalised Norm of psi: ",norm(psi))
+    psi/=norm(psi.^2) # Normalise propagated wavefunction
+    return psi
+end
+
 using UnicodePlots # Take it back to the 80s
 
 function main()
@@ -88,6 +96,8 @@ function main()
 
     #println("Full square matrix H");
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+    psi=eigvecs(H)[:,1] # gnd state
+ 
     println(H)
 
     println("Eigenvalues")
@@ -114,12 +124,27 @@ function main()
 
         myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
         lineplot!(myplot,density,name="Electon Density",color=:yellow)
+        lineplot!(myplot,psi,name="Psi",color=:green)
         lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
 
 #        if (i%10==0)
             print(myplot)
 #        end
     end
+
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+    psi=eigvecs(H)[:,1] # gnd state
+ 
+    println("Psi: ",psi)
+    myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
+    for i in 1:10
+        psi=TimeDependentPropagation(psi,H,0.0001)
+        println("TimeDependentPropagation Psi: ",psi)
+        myplot=lineplot(real(psi),color=:red) # psi, wavefunction
+        print(myplot)
+        lineplot!(myplot,real(psi.^2),color=:yellow) #psi^2, density
+    end
+    print(myplot)
 end
 
 main() # Party like it's C99!
