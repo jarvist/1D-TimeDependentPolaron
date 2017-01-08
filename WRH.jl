@@ -134,17 +134,23 @@ function main()
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     psi=eigvecs(H)[:,1] # gnd state
- 
+
+    println("Hamiltonian: ")
+    display(H) # Nb: display does the pretty-print which you see at the julia> command line.
+    println("Eigvecs: ")
+    display(eigvecs(H))
+
     println("Psi: ",psi)
-    myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
+    #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
     for i in 1:10
-        psi=TimeDependentPropagation(psi,H,0.0001)
-        println("TimeDependentPropagation Psi: ",psi)
-        myplot=lineplot(real(psi),color=:red) # psi, wavefunction
-        print(myplot)
+        psi=TimeDependentPropagation(psi,H,0.0000001)
+        println("TimeDependentPropagation Psi: ")
+        display(psi)
+        myplot=lineplot(real(psi),color=:red,width=80) # psi, wavefunction
         lineplot!(myplot,real(psi.^2),color=:yellow) #psi^2, density
+        print(myplot)
     end
-    print(myplot)
+    #print(myplot)
 end
 
 main() # Party like it's C99!
