@@ -1,13 +1,20 @@
 # WRH.jl
-# Simple Julia codes to play with 1D Polaron propogation
+# Simple Julia codes to play with 1D Polaron propagation
 
 # What's your name man? -- https://www.youtube.com/watch?v=SZXHoWwBcDc
 println("Time is said to have only one dimension, and space to have three dimensions. - William Rowan Hamilton")
 
+# These codes simulate the formation of a Polaron in a 1D Tight-Binding model. 
+# The model is an |N> site model, where the sites are expected to be ~molecular~ units in real space. 
+# The response of the lattice is modelled as a dipole response, for the polarisation of the dielectric modes.
+# Electronic structure is by tight-binding, with site energies perturbed by the response of the lattice, 
+# and a parameterised 'transfer integral' for the kinetic energy between nearest neighbour sites
+
 #Bolztmann's constant in units of eV - thereby all the potentials (of functional form or tabulated data) in units eV
 const kB=8.6173324E-5
 
-const N=10^1 # Length of tridiagonal Hamiltonian constructed; larger value -> better statistics, slower runtime
+const N=10^1 # Number of sites in model
+             # --> Size of tridiagonal Hamiltonian constructed; larger value -> better statistics, slower runtime
 
 const Edisorder=0.0 # Energetic disorder eV, Gaussian form
 const Jdisorder=0.0 # Transfer integral disorder, eV. 
