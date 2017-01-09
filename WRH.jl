@@ -26,14 +26,20 @@ modelJ(theta) = J0*cos(theta*pi/180.0).^2
 const T=300
 const B=1/(T*kB) #300K * k_B in eV
 
-### Liberated from 'Sturm': https://github.com/jarvist/Teclo/blob/master/Sturm.jl ###
-# Generate a random tridiagonal TightBinding Hamiltonian, in a form suitable for the Sturm sequence
+"""
+    randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
+
+Liberated from 'Sturm': https://github.com/jarvist/Teclo/blob/master/Sturm.jl 
+
+Generate a random tridiagonal TightBinding Hamiltonian, in a form suitable for the Sturm sequence
+
 # Given: 
-#   SiteEnergy - scalar eV; reference for site energy of monomer
-#   Edisorder - scalar eV ; amount of Gaussian / normal energetic disorder, for trace of Hamiltonian
-#   Jdisorder - scalar eV
-#   modelJ(theta) - function, takes degrees, returns eV ; model for the transfer integral (e.g. E=(J0*cos(thetas*pi/180)).^2 )
-#   N - integar ; size of diagonal of Hamiltonian
+ *   SiteEnergy - scalar eV; reference for site energy of monomer
+ *   Edisorder - scalar eV ; amount of Gaussian / normal energetic disorder, for trace of Hamiltonian
+ *   Jdisorder - scalar eV
+ *   modelJ(theta) - function, takes degrees, returns eV ; model for the transfer integral (e.g. E=(J0*cos(thetas*pi/180)).^2 )
+ *   N - integar ; size of diagonal of Hamiltonian
+"""
 function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
 # Random Trace / diagonal elements
     S=SiteEnergy + Edisorder*randn(N)
