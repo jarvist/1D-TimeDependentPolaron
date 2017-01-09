@@ -92,11 +92,24 @@ end
 function TimeDependentPropagation(psi,H,dt,E) # propagate using eigenvalue
     psi=exp(-im*E*dt/hbar)*psi
     println("Pre normalised Norm of psi: ",norm(psi))
-    psi/=norm(psi*psi') # Normalise propagated wavefunction
+#    psi/=norm(psi*psi') # Normalise propagated wavefunction
     return psi
 end
 
 using UnicodePlots # Take it back to the 80s
+
+function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
+    println("Site energies: ",S)
+    println("Psi: ",psi)
+    println("Electron density: ",density)
+    println("Dipoles: ",dipoles)
+
+    myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
+    lineplot!(myplot,psi,name="Psi",color=:green)
+    lineplot!(myplot,density,name="Electon Density",color=:yellow)
+    lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
+    print(myplot)
+end
 
 function main()
     # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
@@ -122,23 +135,12 @@ function main()
     # Self consistent field loop
     for i in 1:10
         @printf("\n\tSCF loop: %d\n",i)
-       
         S,psi,density,dipoles = AdiabaticPropagation(dipoles,E)
-
-        println("Site energies: ",S)
-        println("Psi: ",psi)
-        println("Electron density: ",density)
-        println("Dipoles: ",dipoles)
-
-        myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
-        lineplot!(myplot,density,name="Electon Density",color=:yellow)
-        lineplot!(myplot,psi,name="Psi",color=:green)
-        lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
-
-#        if (i%10==0)
-            print(myplot)
-#        end
+        Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     end
+
+    dipoles=zeros(N)
+    S,psi,density,dipoles = AdiabaticPropagation(dipoles,E)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     psi=eigvecs(H)[:,1] # gnd state
@@ -150,6 +152,7 @@ function main()
 
     dt=1 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
 
+
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
     for i in 1:20
@@ -159,10 +162,12 @@ function main()
         
         println("TimeDependentPropagation Psi: ")
         display(psi)
+        println("Psi.^2 : ")
+        display(psi.^2)
         println()
 
         myplot=lineplot(real(psi),ylim=[-1,1],color=:red,width=80) # psi, wavefunction
-        lineplot!(myplot,real(psi.^2),color=:yellow) #psi^2, density
+        lineplot!(myplot,abs(psi.^2),color=:yellow) #psi^2, density
         print(myplot)
     end
 end
