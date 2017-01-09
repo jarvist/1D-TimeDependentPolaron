@@ -113,6 +113,23 @@ function TimeDependentPropagation(psi,H,dt,E) # propagate using eigenvalue
     return psi
 end
 
+"Self-consistent response of the lattice with unitary (time dependent) evolution of the wavefunction. Nb: Doesn't work currently - need a working Hamiltonian based unitary operator!"
+function UnitaryPropagation(dipoles,E,psi,dt)
+    S=SiteEnergyFromDipoles(dipoles)
+
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) 
+    
+    En=eigvals(H)[1]
+    println("Eigvals: ",En)
+    psi=TimeDependentPropagation(psi,H,dt,En)
+    #psi=TimeDependentPropagation(psi,H,dt)
+ 
+    density=abs(psi.^2) # can be Complex!
+    dipoles=DipolesFromDensity(dipoles,density)
+    
+    return S,psi,density,dipoles
+end
+ 
 using UnicodePlots # Take it back to the 80s
 
 "Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest."
@@ -129,6 +146,31 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     print(myplot)
 end
 
+" Plot spectrum of (H)amiltonian, other useful info."
+function Plot_H(H)
+    # display -> use Julia's prettyprinting, a la the REPL
+    display(H)
+    println("Eigenvalues: ")
+    display(eigvals(H))
+    println("Min Eigenvalue: ",eigmin(H))
+    
+    myvecs=eigvecs(H)
+    myvals=eigvals(H)
+
+    println("Eig Vecs: ")
+    display(myvecs)
+
+    siteenergies=[H[i,i] for i in 1:size(H,2)]
+    myplot=lineplot(siteenergies,name="Site Energies",color=:red,width=80)
+    
+    for i in 1:size(myvecs,2)
+        vec=myvecs[i,:] + myvals
+        println("Vec: ",vec)
+        lineplot!(myplot,vec,name="Eigenvectors",color=:green)
+    end
+    print(myplot)
+end
+
 function main()
     # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
     S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
@@ -137,21 +179,13 @@ function main()
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     psi=eigvecs(H)[:,1] # gnd state
  
-    println(H)
-
-    println("Eigenvalues")
-    println(eigvals(H))
-    println("Min Eigenvalue")
-    println(eigmin(H))
-
-    println("Eig Vecs")
-    println(eigvecs(H))
+    Plot_H(H)
 
     ## Testing
     dipoles=zeros(N)
 
     # Self consistent field loop
-    for i in 1:10
+    for i in 1:1
         @printf("\n\tSCF loop: %d\n",i)
         S,psi,density,dipoles = AdiabaticPropagation(dipoles,E)
         Plot_S_psi_density_dipoles(S,psi,density,dipoles)
@@ -170,16 +204,8 @@ function main()
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
     for i in 1:20
-        #psi=TimeDependentPropagation(psi,H,dt)
-        psi=TimeDependentPropagation(psi,H,dt,eigvals(H)[1]) # Eigenvalue version
-        
-        println("TimeDependentPropagation Psi: ")
-        display(psi)
-        println("Psi.^2 : ")
-        display(psi.^2)
-        println()
-
-        density=abs(psi.^2)
+        @printf("\n\tUnitary Propagation Loop: %d\n",i)
+        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt)
         Plot_S_psi_density_dipoles(S,real(psi),density,dipoles)
     end
 end
