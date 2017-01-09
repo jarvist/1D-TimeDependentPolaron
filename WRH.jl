@@ -146,9 +146,6 @@ function main()
         Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     end
 
-    dipoles=zeros(N)
-    S,psi,density,dipoles = AdiabaticPropagation(dipoles,E)
-
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     psi=eigvecs(H)[:,1] # gnd state
 
@@ -159,12 +156,10 @@ function main()
 
     dt=1 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
 
-
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
     for i in 1:20
         #psi=TimeDependentPropagation(psi,H,dt)
-        
         psi=TimeDependentPropagation(psi,H,dt,eigvals(H)[1]) # Eigenvalue version
         
         println("TimeDependentPropagation Psi: ")
@@ -173,9 +168,8 @@ function main()
         display(psi.^2)
         println()
 
-        myplot=lineplot(real(psi),ylim=[-1,1],color=:red,width=80) # psi, wavefunction
-        lineplot!(myplot,abs(psi.^2),color=:yellow) #psi^2, density
-        print(myplot)
+        density=abs(psi.^2)
+        Plot_S_psi_density_dipoles(S,real(psi),density,dipoles)
     end
 end
 
