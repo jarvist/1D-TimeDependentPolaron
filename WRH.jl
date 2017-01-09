@@ -81,10 +81,18 @@ function AdiabaticPropagation(dipoles,E)
 end
 
 const hbar=1.0
-function TimeDependentPropagation(psi,H,dt)
+# Not currently unitary!
+function TimeDependentPropagation(psi,H,dt) # propagate directly using full Hamiltonian=T+V
     psi=exp(-im*H*dt/hbar)*psi
     println("Pre normalised Norm of psi: ",norm(psi))
     psi/=norm(psi.^2) # Normalise propagated wavefunction
+    return psi
+end
+
+function TimeDependentPropagation(psi,H,dt,E) # propagate using eigenvalue
+    psi=exp(-im*E*dt/hbar)*psi
+    println("Pre normalised Norm of psi: ",norm(psi))
+    psi/=norm(psi*psi') # Normalise propagated wavefunction
     return psi
 end
 
@@ -140,17 +148,23 @@ function main()
     println("Eigvecs: ")
     display(eigvecs(H))
 
+    dt=1 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
+
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
-    for i in 1:10
-        psi=TimeDependentPropagation(psi,H,0.0000001)
+    for i in 1:20
+        #psi=TimeDependentPropagation(psi,H,dt)
+        
+        psi=TimeDependentPropagation(psi,H,dt,eigvals(H)[1]) # Eigenvalue version
+        
         println("TimeDependentPropagation Psi: ")
         display(psi)
-        myplot=lineplot(real(psi),color=:red,width=80) # psi, wavefunction
+        println()
+
+        myplot=lineplot(real(psi),ylim=[-1,1],color=:red,width=80) # psi, wavefunction
         lineplot!(myplot,real(psi.^2),color=:yellow) #psi^2, density
         print(myplot)
     end
-    #print(myplot)
 end
 
 main() # Party like it's C99!
