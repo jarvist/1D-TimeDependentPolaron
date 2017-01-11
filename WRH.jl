@@ -99,7 +99,13 @@ end
 const hbar=1.0
 "Warning - not currently unitary! Propagate Wavefunction directly with Hamiltonian and time dependent Schrodinger equation."
 function TimeDependentPropagation(psi,H,dt) # propagate directly using full Hamiltonian=T+V
-    psi=exp(-im*H*dt/hbar)*psi
+    U=exp(-im*H*dt/hbar)
+    println("U: ")
+    display(U)
+    println("UU': ")
+    display(U*U') # Why you no unitary?
+    psi=U*psi
+
     println("Pre normalised Norm of psi: ",norm(psi))
     psi/=norm(psi.^2) # Normalise propagated wavefunction
     return psi
@@ -121,8 +127,8 @@ function UnitaryPropagation(dipoles,E,psi,dt)
     
     En=eigvals(H)[1]
     println("Eigvals: ",En)
-    psi=TimeDependentPropagation(psi,H,dt,En)
-    #psi=TimeDependentPropagation(psi,H,dt)
+    #psi=TimeDependentPropagation(psi,H,dt,En)
+    psi=TimeDependentPropagation(psi,H,dt)
  
     density=abs(psi.^2) # can be Complex!
     dipoles=DipolesFromDensity(dipoles,density)
