@@ -101,8 +101,15 @@ const hbar=1.0
 function TimeDependentPropagation(psi,H,dt;slices::Int=1) # propagate directly using full Hamiltonian=T+V
     # Decompose unitary evolution into this many slices
     dt=dt/slices
+
+#    S,J=Decompose_H(H) # split into diagonal and off-diag terms
+#    U=exp(-im*S*dt/hbar)*exp(-im*J*dt/hbar)
+
     U=exp(-im*H*dt/hbar)
     for i=2:slices
+#        S,J=Decompose_H(H) # split into diagonal and off-diag terms
+#        U=exp(-im*S*dt/hbar)*exp(-im*J*dt/hbar)
+
         U*=exp(-im*H*dt/hbar)
     end
 
@@ -118,7 +125,6 @@ function TimeDependentPropagation(psi,H,dt;slices::Int=1) # propagate directly u
 end
 
 function TimeDependentPropagationDecompose(psi,H,dt) # propagate directly using full Hamiltonian=T+V
-    
     S,J=Decompose_H(H) # split into diagonal and off-diag terms
     U=exp(-im*S*dt/hbar)*exp(-im*J*dt/hbar)
 
@@ -238,9 +244,9 @@ function main()
 
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
-    for i in 1:20
+    for i in 1:25
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
-        psi=eigvecs(H)[:,1] # gnd state
+#        psi=eigvecs(H)[:,1] # gnd state
         S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,slices=i)
         Plot_S_psi_density_dipoles(S,real(psi),density,dipoles)
     end
