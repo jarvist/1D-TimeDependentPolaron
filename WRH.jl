@@ -98,15 +98,37 @@ end
 
 const hbar=1.0
 "Warning - not currently unitary! Propagate Wavefunction directly with Hamiltonian and time dependent Schrodinger equation."
-function TimeDependentPropagation(psi,H,dt) # propagate directly using full Hamiltonian=T+V
+function TimeDependentPropagation(psi,H,dt;slices::Int=1) # propagate directly using full Hamiltonian=T+V
+    # Decompose unitary evolution into this many slices
+    dt=dt/slices
     U=exp(-im*H*dt/hbar)
-    println("U: ")
+    for i=2:slices
+        U*=exp(-im*H*dt/hbar)
+    end
+
+    @printf(" (matrix-squaring slices: %d) U: \n",slices)
     display(U)
-    println("UU': ")
+    println("\n\tUU': (in any sane world this should be = Identity )\n")
     display(U*U') # Why you no unitary?
     psi=U*psi
 
-    println("Pre normalised Norm of psi: ",norm(psi))
+    println("\nPre normalised Norm of psi: ",norm(psi))
+    psi/=norm(psi.^2) # Normalise propagated wavefunction
+    return psi
+end
+
+function TimeDependentPropagationDecompose(psi,H,dt) # propagate directly using full Hamiltonian=T+V
+    
+    S,J=Decompose_H(H) # split into diagonal and off-diag terms
+    U=exp(-im*S*dt/hbar)*exp(-im*J*dt/hbar)
+
+    @printf(" (matrix-squaring slices: %d) U: \n",slices)
+    display(U)
+    println("\n\tUU': (in any sane world this should be = Identity )\n")
+    display(U*U') # Why you no unitary?
+    psi=U*psi
+
+    println("\nPre normalised Norm of psi: ",norm(psi))
     psi/=norm(psi.^2) # Normalise propagated wavefunction
     return psi
 end
@@ -120,7 +142,7 @@ function TimeDependentPropagation(psi,H,dt,E) # propagate using eigenvalue
 end
 
 "Self-consistent response of the lattice with unitary (time dependent) evolution of the wavefunction. Nb: Doesn't work currently - need a working Hamiltonian based unitary operator!"
-function UnitaryPropagation(dipoles,E,psi,dt)
+function UnitaryPropagation(dipoles,E,psi,dt;slices::Int=1)
     S=SiteEnergyFromDipoles(dipoles)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) 
@@ -128,7 +150,7 @@ function UnitaryPropagation(dipoles,E,psi,dt)
     En=eigvals(H)[1]
     println("Eigvals: ",En)
     #psi=TimeDependentPropagation(psi,H,dt,En)
-    psi=TimeDependentPropagation(psi,H,dt)
+    psi=TimeDependentPropagation(psi,H,dt,slices=slices)
  
     density=abs(psi.^2) # can be Complex!
     dipoles=DipolesFromDensity(dipoles,density)
@@ -150,6 +172,13 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     lineplot!(myplot,density,name="Electon Density",color=:yellow)
     lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
     print(myplot)
+end
+
+" Decompose Hamiltonian into Diagonal/S/PE and Off-diag/J/KE elements"
+function Decompose_H(H)
+    S=eye(N).*H # elementwise to select for just diagonal terms
+    J=H-S
+    return S,J
 end
 
 " Plot spectrum of (H)amiltonian, other useful info."
@@ -211,7 +240,8 @@ function main()
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
     for i in 1:20
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
-        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt)
+        psi=eigvecs(H)[:,1] # gnd state
+        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,slices=i)
         Plot_S_psi_density_dipoles(S,real(psi),density,dipoles)
     end
 end
