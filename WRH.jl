@@ -98,19 +98,26 @@ end
 
 const hbar=1.0
 "Warning - not currently unitary! Propagate Wavefunction directly with Hamiltonian and time dependent Schrodinger equation."
-function TimeDependentPropagation(psi,H,dt;slices::Int=1) # propagate directly using full Hamiltonian=T+V
+function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false) # propagate directly using full Hamiltonian=T+V
     # Decompose unitary evolution into this many slices
     dt=dt/slices
 
-#    S,J=Decompose_H(H) # split into diagonal and off-diag terms
-#    U=exp(-im*S*dt/hbar)*exp(-im*J*dt/hbar)
+    if decompose
+        S,J=Decompose_H(H) # split into diagonal and off-diag terms
+        # Trotter decomposition
+        U=expm(-im*J*dt/2*hbar)*expm(-im*S*dt/hbar)*expm(-im*J*dt/2*hbar)
+    else
+        U=expm(-im*H*dt/hbar)
+    end
 
-    U=exp(-im*H*dt/hbar)
     for i=2:slices
-#        S,J=Decompose_H(H) # split into diagonal and off-diag terms
-#        U=exp(-im*S*dt/hbar)*exp(-im*J*dt/hbar)
-
-        U*=exp(-im*H*dt/hbar)
+        if decompose
+            S,J=Decompose_H(H) # split into diagonal and off-diag terms
+            # Trotter decomposition
+            U*=expm(-im*J*dt/2*hbar)*expm(-im*S*dt/hbar)*expm(-im*J*dt/2*hbar)
+        else
+            U*=expm(-im*H*dt/hbar)
+        end
     end
 
     @printf(" (matrix-squaring slices: %d) U: \n",slices)
@@ -120,7 +127,7 @@ function TimeDependentPropagation(psi,H,dt;slices::Int=1) # propagate directly u
     psi=U*psi
 
     println("\nPre normalised Norm of psi: ",norm(psi))
-    psi/=norm(psi.^2) # Normalise propagated wavefunction
+    psi/=norm(abs(psi.^2)) # Normalise propagated wavefunction
     return psi
 end
 
@@ -156,7 +163,7 @@ function UnitaryPropagation(dipoles,E,psi,dt;slices::Int=1)
     En=eigvals(H)[1]
     println("Eigvals: ",En)
     #psi=TimeDependentPropagation(psi,H,dt,En)
-    psi=TimeDependentPropagation(psi,H,dt,slices=slices)
+    psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true)
  
     density=abs(psi.^2) # can be Complex!
     dipoles=DipolesFromDensity(dipoles,density)
