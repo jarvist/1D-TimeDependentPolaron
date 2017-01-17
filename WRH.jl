@@ -13,7 +13,7 @@ println("Time is said to have only one dimension, and space to have three dimens
 #Bolztmann's constant in units of eV - thereby all the potentials (of functional form or tabulated data) in units eV
 const kB=8.6173324E-5
 
-const N=10^1 # Number of sites in model
+const N=50 # Number of sites in model
              # --> Size of tridiagonal Hamiltonian constructed; larger value -> better statistics, slower runtime
 
 const Edisorder=0.0 # Energetic disorder eV, Gaussian form
@@ -170,7 +170,13 @@ function TimeDependentPropagation(psi,H,dt,E) # propagate using eigenvalue
     return psi
 end
 
-using UnicodePlots # Take it back to the 80s
+const UsePlots=true
+if UsePlots
+    using Plots # This is a meta-plotting package, wrapping around multiple backends
+#    unicodeplots() # Take it back to the 80s
+else
+    using UnicodePlots # Use UnicodePlots directly 
+end
 
 "Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest."
 function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
@@ -179,11 +185,22 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     println("Electron density: ",density," Sum: ",sum(density))
     println("Dipoles: ",dipoles," Sum: ",sum(dipoles))
 
-    myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
-    lineplot!(myplot,psi,name="Psi",color=:green)
-    lineplot!(myplot,density,name="Electon Density",color=:yellow)
-    lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
-    print(myplot)
+    # Using Plots interface
+    if UsePlots
+        plot(S,label="Site Energies",color=:red)
+        plot!(psi,label="Psi",color=:green)
+        plot!(density,label="Electon Density",color=:yellow)
+        plot!(dipoles,label="Dipoles",color=:blue)
+
+        gui()
+    else
+        # Directly using UnicodePlots
+        myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
+        lineplot!(myplot,psi,name="Psi",color=:green)
+        lineplot!(myplot,density,name="Electon Density",color=:yellow)
+        lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
+        print(myplot)
+    end
 end
 
 " Decompose Hamiltonian into Diagonal/S/PE and Off-diag/J/KE elements"
@@ -207,6 +224,7 @@ function Plot_H(H)
     println("Eig Vecs: ")
     display(myvecs)
 
+    # TODO: UPDATE THIS FOR PLOTS.jl
     siteenergies=[H[i,i] for i in 1:size(H,2)]
     myplot=lineplot(siteenergies,name="Site Energies",color=:red,width=80)
     
@@ -226,7 +244,8 @@ function main()
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     psi=eigvecs(H)[:,1] # gnd state
  
-    Plot_H(H)
+#    Plot_H(H) 
+#    TODO: UPDATE THIS FOR PLOTS.jl
 
     ## Testing
     dipoles=zeros(N)
@@ -239,7 +258,7 @@ function main()
     end
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
-    psi=eigvecs(H)[:,1] # gnd state
+    psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
 
     println("Hamiltonian: ")
     display(H) # Nb: display does the pretty-print which you see at the julia> command line.
