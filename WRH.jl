@@ -98,7 +98,7 @@ end
 
 const hbar=1.0
 "Warning - not currently unitary! Propagate Wavefunction directly with Hamiltonian and time dependent Schrodinger equation."
-function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false) # propagate directly using full Hamiltonian=T+V
+function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,verbose::Bool=false) # propagate directly using full Hamiltonian=T+V
     # Decompose unitary evolution into this many slices
     dt=dt/slices
 
@@ -120,29 +120,18 @@ function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false) 
         end
     end
 
-    @printf(" (matrix-squaring slices: %d) U: \n",slices)
-    display(U)
-    println("\n\tUU': (in any sane world this should be = Identity )\n")
-    display(U*U') # Why you no unitary?
-    psi=U*psi
+    psi=U*psi # OK; we've built out unitary time evolution operator U, now apply it
 
-    println("\nPre normalised Norm of psi: ",norm(psi))
+    if verbose # for debugging / introspection
+        @printf(" (matrix-squaring slices: %d) U: \n",slices)
+        display(U)
+        println("\n\tUU': (in any sane world this should be = Identity )\n")
+        display(U*U') # Why you no unitary?
+
+        println("\nPre normalised Norm of psi: ",norm(psi))
+    end
+
     psi/=norm(abs(psi.^2)) # Normalise propagated wavefunction
-    return psi
-end
-
-function TimeDependentPropagationDecompose(psi,H,dt) # propagate directly using full Hamiltonian=T+V
-    S,J=Decompose_H(H) # split into diagonal and off-diag terms
-    U=exp(-im*S*dt/hbar)*exp(-im*J*dt/hbar)
-
-    @printf(" (matrix-squaring slices: %d) U: \n",slices)
-    display(U)
-    println("\n\tUU': (in any sane world this should be = Identity )\n")
-    display(U*U') # Why you no unitary?
-    psi=U*psi
-
-    println("\nPre normalised Norm of psi: ",norm(psi))
-    psi/=norm(psi.^2) # Normalise propagated wavefunction
     return psi
 end
 
@@ -162,8 +151,8 @@ function UnitaryPropagation(dipoles,E,psi,dt;slices::Int=1)
     
     En=eigvals(H)[1]
     println("Eigvals: ",En)
-    #psi=TimeDependentPropagation(psi,H,dt,En)
-    psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true)
+    
+    psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true,verbose=false)
  
     density=abs(psi.^2) # can be Complex!
     dipoles=DipolesFromDensity(dipoles,density)
@@ -254,7 +243,7 @@ function main()
     for i in 1:25
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
 #        psi=eigvecs(H)[:,1] # gnd state
-        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,slices=i)
+        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,slices=1)
         Plot_S_psi_density_dipoles(S,real(psi),density,dipoles)
     end
 end
