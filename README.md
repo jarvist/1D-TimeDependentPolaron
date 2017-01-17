@@ -11,7 +11,8 @@ A plot below shows the S-curve of the dipoles, generating the dimpled site energ
 ## Plan
 - [x] 1D dipoles for polarisation of lattice
 - [x] dipoles respond to adiabatic ground states (i.e. solve TISE for H)
-- [x] evolve simulation in time
+- [x] evolve simulation in time; (adiabatic electronic structure; step dipoles
+  to respond to lattice - 'AdiabaticPropagation')
 - [ ] figure out the realistic parameters of all the values set to 1 (starting with the dt=1 !)
-- [ ] add time-dependent Schr. equation for propogation of the wavefunction of interest
+- [x] add time-dependent Schr. equation for propogation of the wavefunction of interest ('UnitaryPropagation')
 - [ ] ? surface hopping by overlap of this wavefn. with the adiabatic solution
