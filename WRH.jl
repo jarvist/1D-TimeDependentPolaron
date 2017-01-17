@@ -158,7 +158,7 @@ function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,v
         println("\nPre normalised Norm of psi: ",norm(psi))
     end
 
-    psi/=norm(abs(psi.^2)) # Normalise propagated wavefunction
+    psi/=sum(abs(psi.^2)) # Normalise propagated wavefunction
     return psi
 end
 
@@ -176,8 +176,8 @@ using UnicodePlots # Take it back to the 80s
 function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     println("Site energies: ",S)
     println("Psi: ",psi)
-    println("Electron density: ",density)
-    println("Dipoles: ",dipoles)
+    println("Electron density: ",density," Sum: ",sum(density))
+    println("Dipoles: ",dipoles," Sum: ",sum(dipoles))
 
     myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
     lineplot!(myplot,psi,name="Psi",color=:green)
@@ -246,7 +246,7 @@ function main()
     println("Eigvecs: ")
     display(eigvecs(H))
 
-    dt=1 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
+    dt=5.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
 
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
