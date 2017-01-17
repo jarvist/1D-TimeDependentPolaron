@@ -26,6 +26,8 @@ modelJ(theta) = J0*cos(theta*pi/180.0).^2
 const T=300
 const B=1/(T*kB) #300K * k_B in eV
 
+const hbar=1.0
+
 """
     randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
 
@@ -96,8 +98,33 @@ function AdiabaticPropagation(dipoles,E)
     return S,psi,density,dipoles
 end
 
-const hbar=1.0
-"Warning - not currently unitary! Propagate Wavefunction directly with Hamiltonian and time dependent Schrodinger equation."
+"Self-consistent response of the lattice with unitary (time dependent) evolution of the wavefunction. "
+function UnitaryPropagation(dipoles,E,psi,dt;slices::Int=1)
+    S=SiteEnergyFromDipoles(dipoles)
+
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) 
+    
+    En=eigvals(H)[1]
+    println("Eigvals: ",En)
+    
+    psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true,verbose=false)
+ 
+    density=abs(psi.^2) # can be Complex!
+    dipoles=DipolesFromDensity(dipoles,density)
+    
+    return S,psi,density,dipoles
+end
+ 
+"""
+    TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,verbose::Bool=false)
+
+Propagate Wavefunction directly with Hamiltonian and time dependent Schrodinger equation.
+
+Psi (N) is the wavefunction; H the Hamiltonian (NxN); dt the length of time to
+propgate along; slices is how many slices to decompose the Unitary operator
+into; verbose sets the display of info on the unitary nature of U, whether U*U'
+~= I.  
+"""
 function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,verbose::Bool=false) # propagate directly using full Hamiltonian=T+V
     # Decompose unitary evolution into this many slices
     dt=dt/slices
@@ -143,23 +170,6 @@ function TimeDependentPropagation(psi,H,dt,E) # propagate using eigenvalue
     return psi
 end
 
-"Self-consistent response of the lattice with unitary (time dependent) evolution of the wavefunction. Nb: Doesn't work currently - need a working Hamiltonian based unitary operator!"
-function UnitaryPropagation(dipoles,E,psi,dt;slices::Int=1)
-    S=SiteEnergyFromDipoles(dipoles)
-
-    H=diagm(E,-1)+diagm(S)+diagm(E,1) 
-    
-    En=eigvals(H)[1]
-    println("Eigvals: ",En)
-    
-    psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true,verbose=false)
- 
-    density=abs(psi.^2) # can be Complex!
-    dipoles=DipolesFromDensity(dipoles,density)
-    
-    return S,psi,density,dipoles
-end
- 
 using UnicodePlots # Take it back to the 80s
 
 "Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest."
