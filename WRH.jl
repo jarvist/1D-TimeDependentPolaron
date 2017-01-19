@@ -13,7 +13,7 @@ println("Time is said to have only one dimension, and space to have three dimens
 #Bolztmann's constant in units of eV - thereby all the potentials (of functional form or tabulated data) in units eV
 const kB=8.6173324E-5
 
-const N=50 # Number of sites in model
+const N=10 # Number of sites in model
              # --> Size of tridiagonal Hamiltonian constructed; larger value -> better statistics, slower runtime
 
 const Edisorder=0.0 # Energetic disorder eV, Gaussian form
@@ -203,6 +203,15 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     end
 end
 
+function overlap(psia,psib)
+    overlaps=zeros(eltype(psib), size(psia,1))
+    for i in 1:size(psia,1)
+        overlap=dot(psia[:,i], psib)
+        overlaps[i]=overlap
+    end
+    return overlaps
+end
+
 " Decompose Hamiltonian into Diagonal/S/PE and Off-diag/J/KE elements"
 function Decompose_H(H)
     S=eye(N).*H # elementwise to select for just diagonal terms
@@ -274,6 +283,8 @@ function main()
 #        psi=eigvecs(H)[:,1] # gnd state
         S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,slices=1)
         Plot_S_psi_density_dipoles(S,real(psi),density,dipoles)
+
+        println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
     end
 end
 
