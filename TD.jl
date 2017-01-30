@@ -69,10 +69,10 @@ end
 # What fraction of the dipole response to update with each step of the electronic degree of freedom. 
 # This is the rate of response of the dipole lattice c.f. an updated step of the electronic degree of freedom
 # And can be imagined as a solution to a heavily damped Simple-Harmonic-Oscillator --> exponential (half life) solution
-const dampening=0.0 
+# dampening=0.025 
 
 "Step-forwards in time, and allow dipoles (dielectric response) of sites to respond to electron density."
-function DipolesFromDensity(dipoles,density)
+function DipolesFromDensity(dipoles,density,dampening)
     for i in 1:N
         relaxeddipole=0
         for j in 1:N
@@ -88,20 +88,20 @@ function DipolesFromDensity(dipoles,density)
 end
 
 "Build Hamiltonian from Dipoles (via SiteEnergyFromDipoles), diagonalise and update dipoles responding to ground state electron density. A wrapper function."
-function AdiabaticPropagation(dipoles,E)
+function AdiabaticPropagation(dipoles,E,dampening)
     S=SiteEnergyFromDipoles(dipoles)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
     psi=eigvecs(H)[:,1] # gnd state
     
     density=psi.^2
-    dipoles=DipolesFromDensity(dipoles,density)
+    dipoles=DipolesFromDensity(dipoles,density,dampening)
 
     return S,psi,density,dipoles
 end
 
 "Self-consistent response of the lattice with unitary (time dependent) evolution of the wavefunction. "
-function UnitaryPropagation(dipoles,E,psi,dt;slices::Int=1)
+function UnitaryPropagation(dipoles,E,psi,dt,dampening;slices::Int=1)
     S=SiteEnergyFromDipoles(dipoles)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) 
@@ -112,7 +112,7 @@ function UnitaryPropagation(dipoles,E,psi,dt;slices::Int=1)
     psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true,verbose=false)
  
     density=abs(psi.^2) # can be Complex!
-    dipoles=DipolesFromDensity(dipoles,density)
+    dipoles=DipolesFromDensity(dipoles,density,dampening)
     
     return S,psi,density,dipoles
 end
@@ -182,7 +182,7 @@ else
 end
 
 "Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest."
-function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
+function Plot_S_psi_density_dipoles(S,psi,density,dipoles;dampening=0.0)
     println("Site energies: ",S)
     println("Psi: ",psi)
     println("Electron density: ",density," Sum: ",sum(density))
@@ -199,7 +199,8 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
 
         plot!(dipoles,label="Dipoles",color=:blue)
         
-        yaxis!("Psi",[-2,2]) # Fix y-axis limits for animation
+        xaxis!("Dampening = $dampening")
+        yaxis!("Psi",[-1,1]) # Fix y-axis limits for animation
 
         gui()
     else
@@ -254,62 +255,69 @@ function Plot_H(H)
     print(myplot)
 end
 
+" Shamelessly copied from Wikipedia:
+https://en.wikipedia.org/wiki/Wave_packet "
 function nondispersive_wavepacket(x0, lambda)
-    psi=[ exp(x-x0)^2*(cos(2*pi*(x-x0)/lambda) + im * sin(2*pi*(x-x0)/lambda) ) for x=1:N ]
+    psi=[ exp(-(x-x0)^2)*(cos(2*pi*(x-x0)/lambda) - im * sin(2*pi*(x-x0)/lambda) ) for x=1:N ]
     return psi
 end
 
 function planewave(lambda)
     k=2*pi/lambda
-    psi=[ exp(im* k*x) for x=1:N ]
+    psi=[ exp(-im* k*x) for x=1:N ]
     return psi
 end
 
 function main()
-    # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
-    S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
+    c=0 # count for output PNG
+    for dampening in [0.0,0.025,0.05]
 
-    #println("Full square matrix H");
-    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
-    psi=eigvecs(H)[:,1] # gnd state
- 
-#    Plot_H(H) 
-#    TODO: UPDATE THIS FOR PLOTS.jl
+        # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
+        S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
 
-    ## Testing
-    dipoles=zeros(N)
+        #println("Full square matrix H");
+        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+        psi=eigvecs(H)[:,1] # gnd state
 
-    # Self consistent field loop
-    for i in 1:1
-        @printf("\n\tSCF loop: %d\n",i)
-        S,psi,density,dipoles = AdiabaticPropagation(dipoles,E)
-        Plot_S_psi_density_dipoles(S,psi,density,dipoles)
-    end
+        #    Plot_H(H) 
+        #    TODO: UPDATE THIS FOR PLOTS.jl
 
-    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
-    psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
+        ## Testing
+        dipoles=zeros(N)
 
-#    psi=nondispersive_wavepacket(3,0.4) # guess at calling
-    psi=planewave(8.0) # Plane wave, lambda=3.0 lattice units
+        # Self consistent field loop
+        for i in 1:1
+            @printf("\n\tSCF loop: %d\n",i)
+            S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
+            Plot_S_psi_density_dipoles(S,psi,density,dipoles)
+        end
 
-    println("Hamiltonian: ")
-    display(H) # Nb: display does the pretty-print which you see at the julia> command line.
-    println("Eigvecs: ")
-    display(eigvecs(H))
+        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+        psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
 
-    dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
+        psi=nondispersive_wavepacket(20,8.0) # guess at calling
+        #psi=planewave(8.0) # Plane wave, lambda=3.0 lattice units
 
-    println("Psi: ",psi)
-    #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
-    for i in 1:1000
-        @printf("\n\tUnitary Propagation Loop: %d\n",i)
-#        psi=eigvecs(H)[:,1] # gnd state
-        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,slices=1)
-        Plot_S_psi_density_dipoles(S,psi,density,dipoles)
-        
-        Plots.png(@sprintf("%05D.png",i)) # Save plot to PNG file; with XXXXX.png filename
+        println("Hamiltonian: ")
+        display(H) # Nb: display does the pretty-print which you see at the julia> command line.
+        println("Eigvecs: ")
+        display(eigvecs(H))
 
-        println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
+        dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
+
+        println("Psi: ",psi)
+        #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
+        for i in 1:200
+            @printf("\n\tUnitary Propagation Loop: %d\n",i)
+            #        psi=eigvecs(H)[:,1] # gnd state
+            S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=1)
+            Plot_S_psi_density_dipoles(S,psi,density,dipoles,dampening=dampening)
+
+            Plots.png(@sprintf("%05D.png",c)) # Save plot to PNG file; with XXXXX.png filename
+            c=c+1
+
+            println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
+        end
     end
 end
 
