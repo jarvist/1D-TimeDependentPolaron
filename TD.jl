@@ -11,7 +11,7 @@ println("\t\"He came riding fast, like a phoenix out of fire-flames.\" -- The Da
 #Bolztmann's constant in units of eV - thereby all the potentials (of functional form or tabulated data) in units eV
 const kB=8.6173324E-5
 
-const N=10 # Number of sites in model
+const N=50 # Number of sites in model
              # --> Size of tridiagonal Hamiltonian constructed; larger value -> better statistics, slower runtime
 
 const Edisorder=0.0 # Energetic disorder eV, Gaussian form
@@ -69,7 +69,7 @@ end
 # What fraction of the dipole response to update with each step of the electronic degree of freedom. 
 # This is the rate of response of the dipole lattice c.f. an updated step of the electronic degree of freedom
 # And can be imagined as a solution to a heavily damped Simple-Harmonic-Oscillator --> exponential (half life) solution
-const dampening=0.5 
+const dampening=0.0 
 
 "Step-forwards in time, and allow dipoles (dielectric response) of sites to respond to electron density."
 function DipolesFromDensity(dipoles,density)
@@ -160,7 +160,8 @@ function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,v
         println("\nPre normalised Norm of psi: ",norm(psi))
     end
 
-    psi/=sum(abs(psi.^2)) # Normalise propagated wavefunction
+    # FIXME: UNDERSTAND ME! Normalising here seems to fubar wavefunction. If left alone, total density=# sites.
+#    psi/=sum(abs(psi.^2)) # Normalise propagated wavefunction
     return psi
 end
 
@@ -175,7 +176,7 @@ end
 const UsePlots=true
 if UsePlots
     using Plots # This is a meta-plotting package, wrapping around multiple backends
-#    unicodeplots() # Take it back to the 80s
+    #unicodeplots() # Take it back to the 80s
 else
     using UnicodePlots # Use UnicodePlots directly 
 end
@@ -190,9 +191,15 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles)
     # Using Plots interface
     if UsePlots
         plot(S,label="Site Energies",color=:red)
-        plot!(psi,label="Psi",color=:green)
-        plot!(density,label="Electon Density",color=:yellow)
+        
+        plot!(real(psi),label="Re[Psi]",color=:green, fill=(0.0, 0.5, :green))
+        plot!(imag(psi),label="Im[Psi]",color=:pink, fill=(0.0, 0.5, :pink))
+        
+        plot!(density,label="Electon Density",color=:orange)
+
         plot!(dipoles,label="Dipoles",color=:blue)
+        
+        yaxis!("Psi",[-2,2]) # Fix y-axis limits for animation
 
         gui()
     else
@@ -247,6 +254,17 @@ function Plot_H(H)
     print(myplot)
 end
 
+function nondispersive_wavepacket(x0, lambda)
+    psi=[ exp(x-x0)^2*(cos(2*pi*(x-x0)/lambda) + im * sin(2*pi*(x-x0)/lambda) ) for x=1:N ]
+    return psi
+end
+
+function planewave(lambda)
+    k=2*pi/lambda
+    psi=[ exp(im* k*x) for x=1:N ]
+    return psi
+end
+
 function main()
     # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
     S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
@@ -271,20 +289,25 @@ function main()
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
 
+#    psi=nondispersive_wavepacket(3,0.4) # guess at calling
+    psi=planewave(8.0) # Plane wave, lambda=3.0 lattice units
+
     println("Hamiltonian: ")
     display(H) # Nb: display does the pretty-print which you see at the julia> command line.
     println("Eigvecs: ")
     display(eigvecs(H))
 
-    dt=5.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
+    dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
 
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
-    for i in 1:25
+    for i in 1:1000
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
 #        psi=eigvecs(H)[:,1] # gnd state
         S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,slices=1)
-        Plot_S_psi_density_dipoles(S,real(psi),density,dipoles)
+        Plot_S_psi_density_dipoles(S,psi,density,dipoles)
+        
+        Plots.png(@sprintf("%05D.png",i)) # Save plot to PNG file; with XXXXX.png filename
 
         println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
     end
