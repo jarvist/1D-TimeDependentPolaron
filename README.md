@@ -10,7 +10,7 @@ A plot below shows the S-curve of the dipoles, generating the dimpled site energ
 
 And you can watch some wavepacket propagation videos with lattice response here:
 
-[![Lattice response to wavepacket](https://img.youtube.com/vi/4pD1B4ullpk/0.jpg)](https://www.youtube.com/watch?v=4pD1B4ullpk)
+[![Lattice response to wavepacket](https://img.youtube.com/vi/3U_zD0kL460/0.jpg)](https://www.youtube.com/watch?v=3U_zD0kL460)
 
 ## Plan
 - [x] 1D dipoles for polarisation of lattice
