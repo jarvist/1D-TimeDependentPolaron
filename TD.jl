@@ -291,7 +291,8 @@ function main()
 
         ## Testing
         dipoles=zeros(N)
-
+#        dipoles=[ (x-N/2)^2*0.01 for x in 1:N ] # quadratic set of dipoles, to give energy slope across device 
+        
         # Self consistent field loop
         for i in 1:1
             @printf("\n\tSCF loop: %d\n",i)
@@ -302,7 +303,8 @@ function main()
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
         psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
 
-        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0 
+        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
+        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
 #        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
 
         println("Hamiltonian: ")
