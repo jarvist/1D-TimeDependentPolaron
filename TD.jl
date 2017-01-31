@@ -107,7 +107,10 @@ function UnitaryPropagation(dipoles,E,psi,dt,dampening;slices::Int=1)
     H=diagm(E,-1)+diagm(S)+diagm(E,1) 
     
     En=eigvals(H)[1]
-    println("Eigvals: ",En)
+    println("First Eigval (adibatic): ",En)
+
+    #psi=eigvecs(H)[:,1] # gnd state; reproduces adiabtic state (eigval) above
+    println("State energy: <psi|H|psi> = ",psi'*H*psi)
     
     psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true,verbose=false)
  
