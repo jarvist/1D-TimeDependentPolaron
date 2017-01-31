@@ -176,6 +176,7 @@ end
 const UsePlots=true
 if UsePlots
     using Plots # This is a meta-plotting package, wrapping around multiple backends
+    gr() # High performance
     #unicodeplots() # Take it back to the 80s
 else
     using UnicodePlots # Use UnicodePlots directly 
@@ -190,19 +191,20 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles;dampening=0.0)
 
     # Using Plots interface
     if UsePlots
-        plot(S,label="Site Energies",color=:red)
+        plot(S,label="Site Energies",color=:red, width=2, size=(1024,768)) # makes it larger, but also slower!
         
-        plot!(real(psi),label="Re[Psi]",color=:green, fill=(0.0, 0.5, :green))
-        plot!(imag(psi),label="Im[Psi]",color=:pink, fill=(0.0, 0.5, :pink))
+        psioffset=-0.5 # Shift wavefunctions down
+        plot!(real(psi)+psioffset,label="Re[Psi]",color=:green , width=2, fill=true, fill=(psioffset,0.3,:green))
+        plot!(imag(psi)+psioffset,label="Im[Psi]",color=:pink, width=2, fill=true, fill=(psioffset,0.3,:pink)) 
         
-        plot!(density,label="Electon Density",color=:orange)
+        plot!(density,label="Electon Density",color=:orange, width=4, fill=true, fill=(0,0.3,:orange))
 
-        plot!(dipoles,label="Dipoles",color=:blue)
+        plot!(dipoles,label="Dipoles",color=:blue, width=2)
         
         xaxis!("Dampening = $dampening")
         yaxis!("Psi",[-1,1]) # Fix y-axis limits for animation
 
-        gui()
+        #gui() # Show figure as pop up window...
     else
         # Directly using UnicodePlots
         myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
