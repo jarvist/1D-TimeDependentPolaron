@@ -112,6 +112,7 @@ function UnitaryPropagation(dipoles,E,psi,dt,dampening;slices::Int=1)
     psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true,verbose=false)
  
     density=abs(psi.^2) # can be Complex!
+
     dipoles=DipolesFromDensity(dipoles,density,dampening)
     
     return S,psi,density,dipoles
@@ -160,8 +161,9 @@ function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,v
         println("\nPre normalised Norm of psi: ",norm(psi))
     end
 
-    # FIXME: UNDERSTAND ME! Normalising here seems to fubar wavefunction. If left alone, total density=# sites.
-#    psi/=sum(abs(psi.^2)) # Normalise propagated wavefunction
+    normalisation=sqrt(sum(abs(psi.^2))) # Nb: for normalisation of WAVEFUNCTION; must SQUAREROOT the sum of density
+    println("Normalising Psi by dividing by: ",normalisation)
+    psi=psi/normalisation # Normalise propagated wavefunction
     return psi
 end
 
@@ -297,8 +299,8 @@ function main()
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
         psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
 
-        psi=nondispersive_wavepacket(20,8.0) # guess at calling
-        #psi=planewave(8.0) # Plane wave, lambda=3.0 lattice units
+        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0 
+#        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
 
         println("Hamiltonian: ")
         display(H) # Nb: display does the pretty-print which you see at the julia> command line.
