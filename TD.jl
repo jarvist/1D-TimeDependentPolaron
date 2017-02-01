@@ -293,14 +293,21 @@ end
 
 framecounter=0 # variable to keep track of which frame / plot for later movie we are in
 
-function main()
+function outputpng()
     global framecounter
-    SCFcycles=0
+    
+    Plots.png(@sprintf("%05D.png",framecounter)) # Save plot to PNG file; with XXXXX.png filename
+    framecounter=framecounter+1
+    println("Just output frame: $framecounter")
+end
+
+function main()
+    SCFcycles=50
     Unitarycycles=200
 
-    for dampening in [0.0,0.025,0.05]
+    for dampening in [0.07,0.025,0.05]
 
-    S,E,H,psi,dipoles=prepare_model()
+        S,E,H,psi,dipoles=prepare_model()
 
         # Self consistent field loop; Adiabatic response of lattice + polaron
         # Sets up disorted lattice with polaron, before time-based propagation (should you want it)
@@ -308,14 +315,17 @@ function main()
             @printf("\n\tSCF loop: %d\n",i)
             S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
             Plot_S_psi_density_dipoles(S,psi,density,dipoles)
+            outputpng()
         end
 
         # Setup wavefunction for time-based propagation
 #        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
 #        psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
 
-        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
-        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
+        psi=psi+nondispersive_wavepacket(15,8.0)
+
+#        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
+#        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
 #        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
 
         dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
@@ -327,10 +337,7 @@ function main()
             #        psi=eigvecs(H)[:,1] # gnd state
             S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=1)
             Plot_S_psi_density_dipoles(S,psi,density,dipoles,dampening=dampening)
-
-            Plots.png(@sprintf("%05D.png",framecounter)) # Save plot to PNG file; with XXXXX.png filename
-            framecounter=framecounter+1
-            println("Just output frame: $framecounter")
+            outputpng()
 
             println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
         end
