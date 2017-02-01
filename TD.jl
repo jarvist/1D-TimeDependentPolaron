@@ -112,7 +112,7 @@ function UnitaryPropagation(dipoles,E,psi,dt,dampening;slices::Int=1)
     #psi=eigvecs(H)[:,1] # gnd state; reproduces adiabtic state (eigval) above
     println("State energy: <psi|H|psi> = ",psi'*H*psi)
     
-    psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=true,verbose=false)
+    psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=false,verbose=false)
  
     density=abs(psi.^2) # can be Complex!
 
@@ -275,55 +275,62 @@ function planewave(lambda)
     return psi
 end
 
+function prepare_model()
+    # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
+    S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+    psi=eigvecs(H)[:,1] # 1=gnd state
+
+    #    Plot_H(H) 
+    #    TODO: UPDATE THIS FOR PLOTS.jl
+
+    ## Construct initial dipoles structure 
+    dipoles=zeros(N)
+    #        dipoles=[ (x-N/2)^2*0.01 for x in 1:N ] # quadratic set of dipoles, to give energy slope across device 
+
+    S,E,H,psi,dipoles
+end
+
+framecounter=0 # variable to keep track of which frame / plot for later movie we are in
+
 function main()
-    c=0 # count for output PNG
+    global framecounter
+    SCFcycles=0
+    Unitarycycles=200
+
     for dampening in [0.0,0.025,0.05]
 
-        # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
-        S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
+    S,E,H,psi,dipoles=prepare_model()
 
-        #println("Full square matrix H");
-        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
-        psi=eigvecs(H)[:,1] # gnd state
-
-        #    Plot_H(H) 
-        #    TODO: UPDATE THIS FOR PLOTS.jl
-
-        ## Testing
-        dipoles=zeros(N)
-#        dipoles=[ (x-N/2)^2*0.01 for x in 1:N ] # quadratic set of dipoles, to give energy slope across device 
-        
-        # Self consistent field loop
-        for i in 1:1
+        # Self consistent field loop; Adiabatic response of lattice + polaron
+        # Sets up disorted lattice with polaron, before time-based propagation (should you want it)
+        for i in 1:SCFcycles
             @printf("\n\tSCF loop: %d\n",i)
             S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
             Plot_S_psi_density_dipoles(S,psi,density,dipoles)
         end
 
-        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
-        psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
+        # Setup wavefunction for time-based propagation
+#        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+#        psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
 
         psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
         psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
 #        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
 
-        println("Hamiltonian: ")
-        display(H) # Nb: display does the pretty-print which you see at the julia> command line.
-        println("Eigvecs: ")
-        display(eigvecs(H))
-
         dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
 
         println("Psi: ",psi)
         #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
-        for i in 1:200
+        for i in 1:Unitarycycles
             @printf("\n\tUnitary Propagation Loop: %d\n",i)
             #        psi=eigvecs(H)[:,1] # gnd state
             S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=1)
             Plot_S_psi_density_dipoles(S,psi,density,dipoles,dampening=dampening)
 
-            Plots.png(@sprintf("%05D.png",c)) # Save plot to PNG file; with XXXXX.png filename
-            c=c+1
+            Plots.png(@sprintf("%05D.png",framecounter)) # Save plot to PNG file; with XXXXX.png filename
+            framecounter=framecounter+1
+            println("Just output frame: $framecounter")
 
             println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
         end
