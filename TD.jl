@@ -188,7 +188,7 @@ else
 end
 
 "Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest."
-function Plot_S_psi_density_dipoles(S,psi,density,dipoles;dampening=0.0)
+function Plot_S_psi_density_dipoles(S,psi,density,dipoles;title="")
     println("Site energies: ",S)
     println("Psi: ",psi)
     println("Electron density: ",density," Sum: ",sum(density))
@@ -206,8 +206,10 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles;dampening=0.0)
 
         plot!(dipoles,label="Dipoles",color=:blue, width=2)
         
-        xaxis!("Dampening = $dampening")
+        xaxis!("Site")
         yaxis!("Psi",[-1,1]) # Fix y-axis limits for animation
+        
+        title!(title)
 
         #gui() # Show figure as pop up window...
     else
@@ -314,7 +316,7 @@ function main()
         for i in 1:SCFcycles
             @printf("\n\tSCF loop: %d\n",i)
             S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
-            Plot_S_psi_density_dipoles(S,psi,density,dipoles)
+            Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
             outputpng()
         end
 
@@ -336,7 +338,7 @@ function main()
             @printf("\n\tUnitary Propagation Loop: %d\n",i)
             #        psi=eigvecs(H)[:,1] # gnd state
             S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=1)
-            Plot_S_psi_density_dipoles(S,psi,density,dipoles,dampening=dampening)
+            Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
             outputpng()
 
             println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
