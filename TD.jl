@@ -188,11 +188,13 @@ else
 end
 
 "Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest."
-function Plot_S_psi_density_dipoles(S,psi,density,dipoles;title="")
-    println("Site energies: ",S)
-    println("Psi: ",psi)
-    println("Electron density: ",density," Sum: ",sum(density))
-    println("Dipoles: ",dipoles," Sum: ",sum(dipoles))
+function Plot_S_psi_density_dipoles(S,psi,density,dipoles;title="",verbose::Bool=false)
+    if verbose
+        println("Site energies: ",S)
+        println("Psi: ",psi)
+        println("Electron density: ",density," Sum: ",sum(density))
+        println("Dipoles: ",dipoles," Sum: ",sum(dipoles))
+    end
 
     # Using Plots interface
     if UsePlots
@@ -300,49 +302,70 @@ function outputpng()
     
     Plots.png(@sprintf("%05D.png",framecounter)) # Save plot to PNG file; with XXXXX.png filename
     framecounter=framecounter+1
-    println("Just output frame: $framecounter")
+    #println("Just output frame: $framecounter")
+end
+
+function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
+
+    S,E,H,psi,dipoles=prepare_model()
+
+    # Self consistent field loop; Adiabatic response of lattice + polaron
+    # Sets up disorted lattice with polaron, before time-based propagation (should you want it)
+    for i in 1:SCFcycles
+        @printf("\n\tSCF loop: %d\n",i)
+        S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
+        Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
+        outputpng()
+    end
+
+    H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+    psi=eigvecs(H)[:,2] # 1=gnd state, 2=1st excited state, etc.
+
+    # Setup wavefunction for time-based propagation
+    psi=psi+nondispersive_wavepacket(15,8.0)
+
+    #        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
+    #        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
+    #        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
+
+    dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
+
+    println("Psi: ",psi)
+    #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
+    for i in 1:Unitarycycles
+        @printf("\n\tUnitary Propagation Loop: %d\n",i)
+        #        psi=eigvecs(H)[:,1] # gnd state
+        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=1)
+        Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
+        outputpng()
+ 
+        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
+#        psi=eigvecs(H)[:,2] # 1=gnd state, 2=1st excited state, etc.
+       
+        ## Sort of terrible surface hopping implementation
+        overlaps=abs(overlap(eigvecs(H),psi))
+        closestAdiabaticState=indmax(overlaps) # index of maximum overlap vector
+        println("Orbital overlaps; polaron c.f. complete set of states\n",overlaps) # calc and print overlaps of propagated function with full set of adiabatic states.
+        println("Max overlap state $closestAdiabaticState with ",overlaps[closestAdiabaticState])
+
+        # Should be minimum switching algorithm / partition function sampling
+        # For now we just randomly jump
+        if i%50==0
+            println(" BORED! JUMPING STATE!")
+            psi=eigvecs(H)[:,closestAdiabaticState+1] # TODO: +1 is a lie; but otherwise it just jumps to the ground state again and again 
+
+            Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
+            outputpng()
+        end
+    end
 end
 
 function main()
     SCFcycles=50
-    Unitarycycles=200
+    Unitarycycles=1000
 
     for dampening in [0.07,0.025,0.05]
-
-        S,E,H,psi,dipoles=prepare_model()
-
-        # Self consistent field loop; Adiabatic response of lattice + polaron
-        # Sets up disorted lattice with polaron, before time-based propagation (should you want it)
-        for i in 1:SCFcycles
-            @printf("\n\tSCF loop: %d\n",i)
-            S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
-            Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
-            outputpng()
-        end
-
-        # Setup wavefunction for time-based propagation
-#        H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
-#        psi=eigvecs(H)[:,1] # 1=gnd state, 2=1st excited state, etc.
-
-        psi=psi+nondispersive_wavepacket(15,8.0)
-
-#        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
-#        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
-#        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
-
-        dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
-
-        println("Psi: ",psi)
-        #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
-        for i in 1:Unitarycycles
-            @printf("\n\tUnitary Propagation Loop: %d\n",i)
-            #        psi=eigvecs(H)[:,1] # gnd state
-            S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=1)
-            Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
-            outputpng()
-
-            println("Orbital overlaps; polaron c.f. complete set of states\n",overlap(eigvecs(H), psi)) # calc and print overlaps of propagated function with full set of adiabatic states.
-        end
+        SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
     end
 end
 
