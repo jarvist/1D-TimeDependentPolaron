@@ -312,7 +312,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
     # Self consistent field loop; Adiabatic response of lattice + polaron
     # Sets up disorted lattice with polaron, before time-based propagation (should you want it)
     for i in 1:SCFcycles
-        @printf("\n\tSCF loop: %d\n",i)
+        @printf("\n\tSCF loop: %d",i)
         S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
         Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
         outputpng()
@@ -350,8 +350,9 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
         for i in overlaps
             @printf("%.2f ",i)
         end
+        println("\nSum overlaps: ",sum(overlaps)," Mean: ",sum(overlaps)/N)
 
-        println("\nMax overlap state $closestAdiabaticState with ",overlaps[closestAdiabaticState])
+        println("Max overlap state $closestAdiabaticState with ",overlaps[closestAdiabaticState])
 
         # Should be minimum switching algorithm / partition function sampling
         # For now we just randomly jump
