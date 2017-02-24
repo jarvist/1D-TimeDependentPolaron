@@ -345,8 +345,13 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
         ## Sort of terrible surface hopping implementation
         overlaps=abs(overlap(eigvecs(H),psi))
         closestAdiabaticState=indmax(overlaps) # index of maximum overlap vector
-        println("Orbital overlaps; polaron c.f. complete set of states\n",overlaps) # calc and print overlaps of propagated function with full set of adiabatic states.
-        println("Max overlap state $closestAdiabaticState with ",overlaps[closestAdiabaticState])
+
+        println("Orbital overlaps; polaron c.f. complete set of states:") # calc and print overlaps of propagated function with full set of adiabatic states.
+        for i in overlaps
+            @printf("%.2f ",i)
+        end
+
+        println("\nMax overlap state $closestAdiabaticState with ",overlaps[closestAdiabaticState])
 
         # Should be minimum switching algorithm / partition function sampling
         # For now we just randomly jump
