@@ -93,7 +93,13 @@ function AdiabaticPropagation(dipoles,E,dampening)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full Hamiltonian
     psi=eigvecs(H)[:,1] # gnd state
-    
+   
+    println("Adiabtic State energy: <psi|H|psi> = ",psi'*H*psi)
+    KE=diagm(E,-1)+diagm(E,+1)
+    PE=diagm(S)
+    println("KE: <psi|KE|psi> = ",psi'*KE*psi)
+    println("PE: <psi|PE|psi> = ",psi'*PE*psi)
+  
     density=psi.^2
     dipoles=DipolesFromDensity(dipoles,density,dampening)
 
@@ -104,13 +110,17 @@ end
 function UnitaryPropagation(dipoles,E,psi,dt,dampening;slices::Int=1)
     S=SiteEnergyFromDipoles(dipoles)
 
-    H=diagm(E,-1)+diagm(S)+diagm(E,1) 
+    H=diagm(E,-1)+diagm(S)+diagm(E,+1) 
     
     En=eigvals(H)[1]
     println("First Eigval (adibatic): ",En)
 
-    #psi=eigvecs(H)[:,1] # gnd state; reproduces adiabtic state (eigval) above
+#    psi=eigvecs(H)[:,1] # gnd state; reproduces adiabtic state (eigval) above
     println("State energy: <psi|H|psi> = ",psi'*H*psi)
+    KE=diagm(E,-1)+diagm(E,+1)
+    PE=diagm(S)
+    println("KE: <psi|KE|psi> = ",psi'*KE*psi)
+    println("PE: <psi|PE|psi> = ",psi'*PE*psi)
     
     psi=TimeDependentPropagation(psi,H,dt,slices=slices,decompose=false,verbose=false)
  
@@ -312,7 +322,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
     # Self consistent field loop; Adiabatic response of lattice + polaron
     # Sets up disorted lattice with polaron, before time-based propagation (should you want it)
     for i in 1:SCFcycles
-        @printf("\n\tSCF loop: %d",i)
+        @printf("\tSCF loop: %d\n",i)
         S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
         Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
         outputpng()
