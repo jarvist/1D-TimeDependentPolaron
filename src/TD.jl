@@ -1,6 +1,22 @@
 # TD.jl
 # Simple Julia codes to play with 1D Polaron propagation
+module TD
+
+export randH, SiteEnergyFromDipoles, DipolesFromDensity, TimeDependentPropagation
+export Plot_S_psi_density_dipoles, overlap, Decompose_H, Plot_H
+export nondispersive_wavepacket, planewave, prepare_model, outputpng
+export SCFthenUnitary
+
 println("\t\"He came riding fast, like a phoenix out of fire-flames.\" -- The Dancer, PJ Harvey" )
+
+const UsePlots=true
+if UsePlots
+    using Plots # This is a meta-plotting package, wrapping around multiple backends
+    gr() # High performance
+    #unicodeplots() # Take it back to the 80s
+else
+    using UnicodePlots # Use UnicodePlots directly 
+end
 
 # These codes simulate the formation of a Polaron in a 1D Tight-Binding model. 
 # The model is an |N> site model, where the sites are expected to be ~molecular~ units in real space. 
@@ -188,15 +204,6 @@ function TimeDependentPropagation(psi,H,dt,E) # propagate using eigenvalue
     return psi
 end
 
-const UsePlots=true
-if UsePlots
-    using Plots # This is a meta-plotting package, wrapping around multiple backends
-    gr() # High performance
-    #unicodeplots() # Take it back to the 80s
-else
-    using UnicodePlots # Use UnicodePlots directly 
-end
-
 "Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest."
 function Plot_S_psi_density_dipoles(S,psi,density,dipoles;title="",verbose::Bool=false)
     if verbose
@@ -376,13 +383,5 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
     end
 end
 
-function main()
-    SCFcycles=50
-    Unitarycycles=1000
-
-    for dampening in [0.07,0.025,0.05]
-        SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
-    end
 end
 
-main() # Party like it's C99!
