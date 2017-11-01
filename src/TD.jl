@@ -16,7 +16,6 @@ if UsePlots
     #unicodeplots() # Take it back to the 80s
 else
     using UnicodePlots # Use UnicodePlots directly 
-    # NB: 2017-11-01 - Doesn't seem to work any more! Changed Unicode Plot options.
 end
 
 # These codes simulate the formation of a Polaron in a 1D Tight-Binding model. 
@@ -235,7 +234,7 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles;title="",verbose::Bool
     else
         # Directly using UnicodePlots
         myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
-        lineplot!(myplot,psi,name="Psi",color=:green)
+        lineplot!(myplot,real(psi),name="Psi",color=:blue)
         lineplot!(myplot,density,name="Electon Density",color=:yellow)
         lineplot!(myplot,dipoles,name="Dipoles",color=:blue)
         print(myplot)
