@@ -7,7 +7,7 @@ function main()
     Unitarycycles=1000
 
     for dampening in [0.07,0.025,0.05]
-        SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
+        SCFthenUnitary(dampening, SCFcycles, Unitarycycles, PNG=false) # PNG=true for .pngs for movie making
     end
 end
 

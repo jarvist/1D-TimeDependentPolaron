@@ -16,6 +16,7 @@ if UsePlots
     #unicodeplots() # Take it back to the 80s
 else
     using UnicodePlots # Use UnicodePlots directly 
+    # NB: 2017-11-01 - Doesn't seem to work any more! Changed Unicode Plot options.
 end
 
 # These codes simulate the formation of a Polaron in a 1D Tight-Binding model. 
@@ -230,7 +231,7 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles;title="",verbose::Bool
         
         title!(title)
 
-        #gui() # Show figure as pop up window...
+        gui() # Show figure as pop up window...
     else
         # Directly using UnicodePlots
         myplot=lineplot(S,name="Site Energies",color=:red,width=80,ylim=[-1,1])
@@ -322,7 +323,7 @@ function outputpng()
     #println("Just output frame: $framecounter")
 end
 
-function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
+function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
 
     S,E,H,psi,dipoles=prepare_model()
 
@@ -332,7 +333,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
         @printf("\tSCF loop: %d\n",i)
         S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
         Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
-        outputpng()
+        if PNG outputpng() end
     end
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
@@ -354,7 +355,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
         #        psi=eigvecs(H)[:,1] # gnd state
         S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=1)
         Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
-        outputpng()
+        if PNG outputpng() end
  
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
 #        psi=eigvecs(H)[:,2] # 1=gnd state, 2=1st excited state, etc.
@@ -378,7 +379,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles)
             psi=eigvecs(H)[:,closestAdiabaticState+1] # TODO: +1 is a lie; but otherwise it just jumps to the ground state again and again 
 
             Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
-            outputpng()
+            if PNG outputpng() end
         end
     end
 end
