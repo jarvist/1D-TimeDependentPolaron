@@ -2,7 +2,24 @@
 
 Polarons + Time-Dependent-Propagation in 1D. Some toy Julia codes.
 
-Currently quick 1D code that treated the polarisation response as a load of dipoles (an N-long array of reals) centred on the sites. Time becomes the discretisation of the SCF cycle, and these dipoles have memory, and respond to the 'density' of the wavefunction. Currently the wavefunction is just the adiabatic solution from the Hamiltonian (i.e. eigvec(H)[:,1]^2).
+The physical model is a one-dimension string of polarisable dipoles. 
+(These are represented as an N-long array of real numbers, representing the
+size and direction of the dipole moment.) 
+A tight-binding Hamiltonian is built on this model, with the site energies
+reconstructed from these dipoles. 
+Solving this Hamiltonian to an electronic density (the lowest energy adiabatic
+state, from the time independent Schrodinger equation), allows one to allow the
+dipoles to respond to this electron density. 
+
+As a function of discretised time, the electron density digs itself a hole in
+this simulated dielectric of polarisable dipoles. 
+
+The wavefunction can also be propagated by the time dependent Schrodinger
+equation, and the dipoles updated to this state. 
+
+This allows for something that is approaching surface hopping. 
+A random exchange can be made to a different excited state (choice of
+excited-state wavefunction from diagonalisation of the Hamiltonian).
 
 A plot below shows the S-curve of the dipoles, generating the dimpled site energy surface (red) with the current electron density sitting in the middle of it.
 
