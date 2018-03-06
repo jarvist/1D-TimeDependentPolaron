@@ -1,5 +1,12 @@
 # TD.jl
 # Simple Julia codes to play with 1D Polaron propagation
+
+# These codes simulate the formation of a Polaron in a 1D Tight-Binding model. 
+# The model is an |N> site model, where the sites are expected to be ~molecular~ units in real space. 
+# The response of the lattice is modelled as a dipole response, for the polarisation of the dielectric modes.
+# Electronic structure is by tight-binding, with site energies perturbed by the response of the lattice, 
+# and a parameterised 'transfer integral' for the kinetic energy between nearest neighbour sites
+
 module TD
 
 println("\t\"He came riding fast, like a phoenix out of fire-flames.\" -- The Dancer, PJ Harvey" )
@@ -18,11 +25,9 @@ else
     using UnicodePlots # Use UnicodePlots directly 
 end
 
-# These codes simulate the formation of a Polaron in a 1D Tight-Binding model. 
-# The model is an |N> site model, where the sites are expected to be ~molecular~ units in real space. 
-# The response of the lattice is modelled as a dipole response, for the polarisation of the dielectric modes.
-# Electronic structure is by tight-binding, with site energies perturbed by the response of the lattice, 
-# and a parameterised 'transfer integral' for the kinetic energy between nearest neighbour sites
+# CONSTANTS
+# - genuine constants are fine
+# - FIXME: put simulation parameters elsewhere; make things more functionally pure.
 
 #Bolztmann's constant in units of eV - thereby all the potentials (of functional form or tabulated data) in units eV
 const kB=8.6173324E-5
@@ -35,11 +40,10 @@ const Jdisorder=0.0 # Transfer integral disorder, eV.
 
 # Model setup
 const J0=0.1
-modelJ(theta) = J0*cos(theta*pi/180.0).^2
+modelJ(θ) = J0*cos(θ*π/180.0).^2
 
 const T=300
 const B=1/(T*kB) #300K * k_B in eV
-
 
 # This effectively reduces down to the 'alpha' parameter in the Frohlich polaron Hamiltonian
 const dipolestrength=0.2 
