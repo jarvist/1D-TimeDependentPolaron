@@ -23,21 +23,41 @@ function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
     return (S,E)
 end
 
-" Shamelessly copied from Wikipedia:
-https://en.wikipedia.org/wiki/Wave_packet "
+"""
+    nondispersive_wavepacket(x0, λ)
+
+Generates a N-unit 1D nondispersive wavepacket. 
+
+Shamelessly copied from Wikipedia:
+https://en.wikipedia.org/wiki/Wave_packet 
+"""
 function nondispersive_wavepacket(x0, λ)
     ψ=[ exp(-(x-x0)^2)*(cos(2π*(x-x0)/λ) - im * sin(2π*(x-x0)/λ) ) for x=1:N ]
     return ψ
 end
 
+"""
+    planewave(λ)
+    
+Generates a N-unit 1D planewave with wavelength λ. 
+"""
 function planewave(λ)
     k=2π/λ
     ψ=[ exp(-im* k*x) for x=1:N ]
     return ψ
 end
 
+"""
+    prepare_model()
+
+    Convenience function to put together everything for the 1D model.
+
+    Generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian, which it then puts together into the overall tridiagonal Hamiltonian. 
+    We then calculate the groundstate ψ, and produce a dipole matrix of zeros.
+
+    Returns  S,E,H,psi,dipoles.
+ """
 function prepare_model()
-    # generates separate (S)ite (diagonal) and (E)-offdiagonal terms of Tight Binding Hamiltonian
     S,E=randH(5.0,Edisorder, Jdisorder, modelJ, N)
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     psi=eigvecs(H)[:,1] # 1=gnd state
