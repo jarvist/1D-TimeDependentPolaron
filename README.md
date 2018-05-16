@@ -1,6 +1,6 @@
-# 1D-TimeDependentPolaron
+# TheDancer.jl 
 
-Polarons + Time-Dependent-Propagation in 1D. Some toy Julia codes.
+Polarons + Time-Dependent-Propagation in 1D. 
 
 The physical model is a one-dimension string of polarisable dipoles. 
 (These are represented as an N-long array of real numbers, representing the
@@ -38,3 +38,4 @@ And you can watch some wavepacket propagation videos with lattice response here:
 - [ ] figure out the realistic parameters of all the values set to 1 (starting with the dt=1 !)
 - [x] add time-dependent Schr. equation for propogation of the wavefunction of interest ('UnitaryPropagation')
 - [ ] ? surface hopping by overlap of this wavefn. with the adiabatic solution
+

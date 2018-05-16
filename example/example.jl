@@ -1,6 +1,6 @@
 push!(LOAD_PATH,"../src/") # load module from local directory
 
-using TD
+using TheDancer 
 
 function main()
     SCFcycles=50
@@ -12,3 +12,4 @@ function main()
 end
 
 main() # Party like it's C99!
+

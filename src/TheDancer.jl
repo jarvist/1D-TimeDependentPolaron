@@ -7,7 +7,7 @@
 # Electronic structure is by tight-binding, with site energies perturbed by the response of the lattice, 
 # and a parameterised 'transfer integral' for the kinetic energy between nearest neighbour sites
 
-module TD
+module TheDancer 
 
 println("\t\"He came riding fast, like a phoenix out of fire-flames.\" -- The Dancer, PJ Harvey" )
 
