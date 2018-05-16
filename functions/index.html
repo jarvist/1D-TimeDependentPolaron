@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Functions provided - TheDancer.jl Documentation</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Functions provided";
+    var mkdocs_page_input_path = "functions.md";
+    var mkdocs_page_url = "/functions/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> TheDancer.jl Documentation</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Functions provided</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#functions-provided">Functions provided</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#models">Models</a></li>
+        
+            <li><a class="toctree-l3" href="#propagators">Propagators</a></li>
+        
+            <li><a class="toctree-l3" href="#simulations">Simulations</a></li>
+        
+        </ul>
+    
+
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">TheDancer.jl Documentation</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Functions provided</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <p><a id='Functions-provided-1'></a></p>
+<h2 id="functions-provided">Functions provided</h2>
+<p><a id='Models-1'></a></p>
+<h3 id="models">Models</h3>
+<pre><code>modelJ(theta) 
+</code></pre>
+
+<p><a id='TheDancer.randH-NTuple{5,Any}' href='#TheDancer.randH-NTuple{5,Any}'>#</a>
+<strong><code>TheDancer.randH</code></strong> &mdash; <em>Method</em>.</p>
+<pre><code>randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
+</code></pre>
+
+<p>Liberated from 'Sturm': https://github.com/jarvist/Teclo/blob/master/Sturm.jl </p>
+<p>Generate a random tridiagonal TightBinding Hamiltonian, in a form suitable for the Sturm sequence</p>
+<p><strong>Given:</strong></p>
+<ul>
+<li>SiteEnergy - scalar eV; reference for site energy of monomer</li>
+<li>Edisorder - scalar eV ; amount of Gaussian / normal energetic disorder, for trace of Hamiltonian</li>
+<li>Jdisorder - scalar eV</li>
+<li>modelJ(theta) - function, takes degrees, returns eV ; model for the transfer integral (e.g. E=(J0<em>cos(thetas</em>pi/180)).^2 )</li>
+<li>N - integar ; size of diagonal of Hamiltonian</li>
+</ul>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/models.jl#L4-L17' class='documenter-source'>source</a><br></p>
+<p><a id='TheDancer.nondispersive_wavepacket-Tuple{Any,Any}' href='#TheDancer.nondispersive_wavepacket-Tuple{Any,Any}'>#</a>
+<strong><code>TheDancer.nondispersive_wavepacket</code></strong> &mdash; <em>Method</em>.</p>
+<p>Shamelessly copied from Wikipedia: https://en.wikipedia.org/wiki/Wave_packet </p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/models.jl#L26-L28' class='documenter-source'>source</a><br></p>
+<pre><code>planewave(λ)
+</code></pre>
+
+<pre><code>prepare_model()
+</code></pre>
+
+<p><a id='Propagators-1'></a></p>
+<h3 id="propagators">Propagators</h3>
+<p><a id='TheDancer.SiteEnergyFromDipoles-Tuple{Any}' href='#TheDancer.SiteEnergyFromDipoles-Tuple{Any}'>#</a>
+<strong><code>TheDancer.SiteEnergyFromDipoles</code></strong> &mdash; <em>Method</em>.</p>
+<p>Calculate site-energies for sites, from potential generated by dipoles at other sites.</p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/propagators.jl#L4' class='documenter-source'>source</a><br></p>
+<p><a id='TheDancer.DipolesFromDensity-Tuple{Any,Any,Any}' href='#TheDancer.DipolesFromDensity-Tuple{Any,Any,Any}'>#</a>
+<strong><code>TheDancer.DipolesFromDensity</code></strong> &mdash; <em>Method</em>.</p>
+<p>Step-forwards in time, and allow dipoles (dielectric response) of sites to respond to electron density.</p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/propagators.jl#L24' class='documenter-source'>source</a><br></p>
+<pre><code>AdiabaticPropagation(dipoles,E,dampening)
+</code></pre>
+
+<pre><code>UnitaryPropagation(dipoles,E,psi,dt,dampening;slices::Int=1)
+</code></pre>
+
+<p><a id='TheDancer.TimeDependentPropagation-Tuple{Any,Any,Any}' href='#TheDancer.TimeDependentPropagation-Tuple{Any,Any,Any}'>#</a>
+<strong><code>TheDancer.TimeDependentPropagation</code></strong> &mdash; <em>Method</em>.</p>
+<pre><code>TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,verbose::Bool=false)
+</code></pre>
+
+<p>Propagate Wavefunction directly with Hamiltonian and time dependent Schrodinger equation.</p>
+<p>Psi (N) is the wavefunction; H the Hamiltonian (NxN); dt the length of time to propgate along; slices is how many slices to decompose the Unitary operator into; verbose sets the display of info on the unitary nature of U, whether U*U' ~= I.  </p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/propagators.jl#L84-L93' class='documenter-source'>source</a><br></p>
+<p><a id='TheDancer.TimeDependentPropagation-NTuple{4,Any}' href='#TheDancer.TimeDependentPropagation-NTuple{4,Any}'>#</a>
+<strong><code>TheDancer.TimeDependentPropagation</code></strong> &mdash; <em>Method</em>.</p>
+<p>Propagate wavefunction directly from eigenergy, and time dependent Schrodinger equation.</p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/propagators.jl#L133' class='documenter-source'>source</a><br></p>
+<p><a id='Simulations-1'></a></p>
+<h3 id="simulations">Simulations</h3>
+<p><a id='TheDancer.Plot_S_psi_density_dipoles-NTuple{4,Any}' href='#TheDancer.Plot_S_psi_density_dipoles-NTuple{4,Any}'>#</a>
+<strong><code>TheDancer.Plot_S_psi_density_dipoles</code></strong> &mdash; <em>Method</em>.</p>
+<p>Wrapper function to pretty-print and plot (UnicodePlots) relevant items of interest.</p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/simulations.jl#L4' class='documenter-source'>source</a><br></p>
+<pre><code>overlap(psia,psib)
+</code></pre>
+
+<p><a id='TheDancer.Decompose_H-Tuple{Any}' href='#TheDancer.Decompose_H-Tuple{Any}'>#</a>
+<strong><code>TheDancer.Decompose_H</code></strong> &mdash; <em>Method</em>.</p>
+<p>Decompose Hamiltonian into Diagonal/S/PE and Off-diag/J/KE elements</p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/simulations.jl#L50' class='documenter-source'>source</a><br></p>
+<p><a id='TheDancer.Plot_H-Tuple{Any}' href='#TheDancer.Plot_H-Tuple{Any}'>#</a>
+<strong><code>TheDancer.Plot_H</code></strong> &mdash; <em>Method</em>.</p>
+<p>Plot spectrum of (H)amiltonian, other useful info.</p>
+<p><a target='_blank' href='https://github.com/jarvist/1D-TimeDependentPolaron/blob/754eee9b65e580a13cd9bdb9a5183414fd039c03/src/simulations.jl#L57' class='documenter-source'>source</a><br></p>
+<pre><code>outputpng()
+</code></pre>
+
+<pre><code>SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href=".." class="btn btn-neutral" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML"></script>
+      <script src="../assets/mathjaxhelper.js"></script>
+      <script src="../search/require.js"></script>
+      <script src="../search/search.js"></script>
+
+</body>
+</html>
