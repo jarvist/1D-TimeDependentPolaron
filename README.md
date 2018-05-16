@@ -1,6 +1,14 @@
 # TheDancer.jl 
 
+[![Build
+Status](https://travis-ci.org/jarvist/TheDancer.jl.svg?branch=master)](https://travis-ci.org/jarvist/TheDancer.jl)
+[![Coverage
+Status](https://coveralls.io/repos/jarvist/TheDancer.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/jarvist/TheDancer.jl?branch=master)
+[![codecov.io](http://codecov.io/github/jarvist/TheDancer.jl/coverage.svg?branch=master)](http://codecov.io/github/jarvist/TheDancer.jl?branch=master)
+
 Polarons + Time-Dependent-Propagation in 1D. 
+
+[![here](https://img.shields.io/badge/docs-latest-blue.svg)](https://jarvist.github.io/TheDancer.jl/)
 
 The physical model is a one-dimension string of polarisable dipoles. 
 (These are represented as an N-long array of real numbers, representing the
