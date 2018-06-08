@@ -7,7 +7,7 @@ function SiteEnergyFromDipoles(dipoles)
     for i in 1:N
         for j in 1:N
             if (j==i) 
-                continue # avoid infinity self energies
+                continue # avoid infinity in self energies
             end
             S[i]+=dipolestrength*dipoles[j]/(i-j)^3 # Contribution to site energy (1 e- at site) from dipoles
         end
@@ -16,15 +16,22 @@ function SiteEnergyFromDipoles(dipoles)
     S
 end
 
-# What fraction of the dipole response to update with each step of the electronic degree of freedom. 
-# This is the rate of response of the dipole lattice c.f. an updated step of the electronic degree of freedom
-# And can be imagined as a solution to a heavily damped Simple-Harmonic-Oscillator --> exponential (half life) solution
-# dampening=0.025 
+"""
+    DipolesFromDensity(dipoles,density,dampening)
 
-"Step-forwards in time, and allow dipoles (dielectric response) of sites to respond to electron density."
+Step-forwards in time, and allow dipoles (dielectric response) of sites to
+respond to electron density.
+
+What fraction of the dipole response to update with each step of the electronic
+degree of freedom.  This is the rate of response of the dipole lattice c.f. an
+updated step of the electronic degree of freedom And can be imagined as
+a solution to a heavily damped Simple-Harmonic-Oscillator --> exponential (half
+life) solution. 
+Typically, dampening~=0.025 
+"""
 function DipolesFromDensity(dipoles,density,dampening)
     for i in 1:N
-        relaxeddipole=0
+        relaxeddipole=zero(eltype(density)) # fix type instability; initialise to zero in the supplied type of density
         for j in 1:N
             if (j==i)
                 continue # avoid infinite self energies
@@ -63,7 +70,7 @@ function UnitaryPropagation(dipoles,E,psi,dt,dampening;slices::Int=1)
     H=diagm(E,-1)+diagm(S)+diagm(E,+1) 
     
     En=eigvals(H)[1]
-    println("First Eigval (adibatic): ",En)
+    println("First Eigval (adiabatic): ",En)
 
 #    psi=eigvecs(H)[:,1] # gnd state; reproduces adiabtic state (eigval) above
     println("State energy: <psi|H|psi> = ",psi'*H*psi)
@@ -94,16 +101,9 @@ into; verbose sets the display of info on the unitary nature of U, whether U*U'
 function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,verbose::Bool=false) # propagate directly using full Hamiltonian=T+V
     # Decompose unitary evolution into this many slices
     dt=dt/slices
+    U=eye(H) # identiy matrix same size + type as H
 
-    if decompose
-        S,J=Decompose_H(H) # split into diagonal and off-diag terms
-        # Trotter decomposition
-        U=expm(-im*J*dt/2*hbar)*expm(-im*S*dt/hbar)*expm(-im*J*dt/2*hbar)
-    else
-        U=expm(-im*H*dt/hbar)
-    end
-
-    for i=2:slices
+    for i=1:slices
         if decompose
             S,J=Decompose_H(H) # split into diagonal and off-diag terms
             # Trotter decomposition

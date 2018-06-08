@@ -95,7 +95,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     S,E,H,psi,dipoles=prepare_model()
 
     # Self consistent field loop; Adiabatic response of lattice + polaron
-    # Sets up disorted lattice with polaron, before time-based propagation (should you want it)
+    # Sets up distorted lattice with polaron, before time-based propagation (should you want it)
     for i in 1:SCFcycles
         @printf("\tSCF loop: %d\n",i)
         S,psi,density,dipoles = AdiabaticPropagation(dipoles,E,dampening)
@@ -113,7 +113,8 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     #        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
     #        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
 
-    dt=1.0 # Time step; not sure of units currently; hbar set to 1 above, energies in eV
+    dt=1.0 # Time step
+    # As energy is in eV; hbar=1; we believe unit is ħ/q = ~0.658 fs 
 
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
@@ -127,17 +128,17 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
 #        psi=eigvecs(H)[:,2] # 1=gnd state, 2=1st excited state, etc.
        
-        ## Sort of terrible surface hopping implementation
-        overlaps=abs(overlap(eigvecs(H),psi))
-        closestAdiabaticState=indmax(overlaps) # index of maximum overlap vector
+        ## Prototype surface hopping implementation 
+        overlaps=abs(overlap(eigvecs(H),psi)) # Overlap of current time-dep ψ with the ADIABATIC set of Φ for this H.
+        closestAdiabaticState=indmax(overlaps) # index of maximum overlap vector; i.e. this is the adiabatic state with max overlap
 
-        println("Orbital overlaps; polaron c.f. complete set of states:") # calc and print overlaps of propagated function with full set of adiabatic states.
-        for i in overlaps
-            @printf("%.2f ",i)
+        println("Wavefunction overlap; polaron c.f. complete set of (adiabatic) states:") 
+        for j in overlaps
+            @printf("%.2f ",j)
         end
         println("\nSum overlaps: ",sum(overlaps)," Mean: ",sum(overlaps)/N)
 
-        println("Max overlap state $closestAdiabaticState with ",overlaps[closestAdiabaticState])
+        println("Maximum overlap with state $closestAdiabaticState =",overlaps[closestAdiabaticState])
 
         # Should be minimum switching algorithm / partition function sampling
         # For now we just randomly jump
