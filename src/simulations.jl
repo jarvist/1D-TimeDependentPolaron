@@ -19,6 +19,9 @@ function Plot_S_psi_density_dipoles(S,psi,density,dipoles;title="",verbose::Bool
         plot!(imag(psi)+psioffset,label="Im[Psi]",color=:pink, width=2, fill=true, fill=(psioffset,0.3,:pink)) 
         
         plot!(density,label="Electon Density",color=:orange, width=4, fill=true, fill=(0,0.3,:orange))
+        
+        CoM=sum(density[x]*x for x=1:length(density))/sum(density)
+        plot!((CoM,0), seriestype=:scatter, label="Centre of electron density", color=:black)
 
         plot!(dipoles,label="Dipoles",color=:blue, width=2)
         
@@ -149,6 +152,40 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
             Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
             if PNG outputpng() end
         end
+    end
+end
+
+"""
+    UnitarySim(dampening,Unitarycycles; slices=5, dt=1.0, PNG::Bool=false)
+
+Simple Unitary (time evolution) simulation.
+
+slices - number of slices in Trotter decomposition of Hamiltonian for matrix exponentiation
+dt - Time step. As energy is in eV; hbar=1; we believe unit is ħ/q = ~0.658 fs 
+"""
+function UnitarySim(dampening,Unitarycycles; slices=5, dt=1.0, PNG::Bool=false)
+    S,E,H,psi,dipoles=prepare_model()
+
+#    dipoles=[ -(x-N/2)^2*0.04 for x in 1:N ] # quadratic set of dipoles, to give energy slope across simulation
+ 
+    dipoles=[ (x-N/2)^3*0.0005 for x in 1:N ] # quadratic set of dipoles, to give energy slope across simulation
+    
+
+    # Setup wavefunction for time-based propagation
+    psi=nondispersive_wavepacket(10,16.0)
+
+    #        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
+    #        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
+    #        psi=planewave(8.0) # Plane wave, lambda=8.0 lattice units
+    println("Psi: ",psi)
+    
+    for i in 1:Unitarycycles
+        @printf("\n\tUnitary Propagation Loop: %d\n",i)
+        #        psi=eigvecs(H)[:,1] # gnd state
+        S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=slices)
+        Plot_S_psi_density_dipoles(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
+        if PNG outputpng() end
+ 
     end
 end
 

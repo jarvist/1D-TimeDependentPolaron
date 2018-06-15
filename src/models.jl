@@ -67,7 +67,6 @@ function prepare_model()
 
     ## Construct initial dipoles structure 
     dipoles=zeros(N)
-    #        dipoles=[ (x-N/2)^2*0.01 for x in 1:N ] # quadratic set of dipoles, to give energy slope across device 
 
     return S,E,H,psi,dipoles
 end
