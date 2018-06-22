@@ -33,9 +33,9 @@ function FieldFromDensity(density)
             if (j==i)
                 continue # avoid infinite self energies
             end
-            Fsum+=density[j]/(i-j)^3 # How much do the dipoles respond to the electron density?
+            Fsum+=density[j]/(j-i)^3 # How much do the dipoles respond to the electron density?
         end
-        Field[i]=Fsum
+        Field[i]=Fsum/r^3
     end
     return Field
 end
@@ -72,7 +72,7 @@ function UpdateDipole(Field,density)
             if (j==i)
                 continue
             end
-            M[n+j] = 1/(i-j)^3
+            M[n+j] = 1/(r*(i-j))^3
         end
         n+=N
     end
