@@ -42,44 +42,56 @@ const dipolestrength=0.2
 
 function TestNewDipole()
     #'''prepare'''
-    S,E,H,psi,density = prepare_model()
+    M2 = zeros((N,N))
+    S,E,H,psi,density = prepare_model2()
     dipole = zeros(N)
     Field = FieldFromDensity(density)
-    S,E,H = UpdateEnergy(dipole, Field, S, E)
-    dipole = UpdateDipole(Field,density)
+    FieldDI = FieldFromDipole(dipole)
+    S,E,H = UpdateEnergy(dipole,density,Field, FieldDI, S, E)
+    dipole,M = UpdateDipole(Field,density,dipole,M2)
 
 
-    psi=psi+nondispersive_wavepacket(20,4.0)
+    psi=psi#+nondispersive_wavepacket(20,1.0)
     normalise = norm(psi)
     psi = psi/normalise
     density = conj(psi).*psi
     #plot(real(density))
     #gui()
     Field = FieldFromDensity(density)
-    dipole = UpdateDipole(Field,density)
-    S,E,H = UpdateEnergy(dipole, Field, S, E)
+    dipole,M = UpdateDipole(Field,density,dipole,M)
+    FieldDI = FieldFromDipole(dipole)
+    S,E,H = UpdateEnergy(dipole,density,Field, FieldDI, S, E)
     norm_dipole = norm(dipole)
     #plot(real(dipole/norm_dipole))
     #gui()
 
 
     #'''propagate'''
-    for i in 1:1000
+    for i in 1:1
         norm_dipole = norm(dipole)
         plot(real(dipole/norm_dipole), label = "dipole")
+        norm_Field = norm(Field)
+        norm_FieldDI = norm(FieldDI)
+        norm_S = norm(S)
         #plot!(imag(psi))
         #plot!(real(psi))
         xlims!(1,N)
-        ylims!(-1,1)
-        plot!(real(density), label = "density")
+        #ylims!(-1,1)
+        norm_density=norm(density)
+        plot!(real(density)/norm_density, label = "density")
+        #plot!(FieldDI/norm_FieldDI, label = "FieldDI")
+        #plot!(Field/norm_Field, label = "Field")
+        #plot!((Field+FieldDI)/(norm_Field+norm_FieldDI), label = "Fields")
+        plot!(real(S/norm_S), label = "energy")
         gui()
         psi, density = Propagate(H,psi,10)
         Field = FieldFromDensity(real(density))
-        dipole = UpdateDipole(Field, density)
-        S,E,H = UpdateEnergy(dipole, Field, S, E)
+        dipole,M = UpdateDipole(Field, density,dipole,M)
+        FieldDI = FieldFromDipole(dipole)
+        S,E,H = UpdateEnergy(dipole,density, Field, FieldDI, S, E)
 
     end
-
+    return M
 end
 
 TestNewDipole()
