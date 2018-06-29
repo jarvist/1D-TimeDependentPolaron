@@ -114,7 +114,7 @@ function UpdateEnergy(dipole,density,FieldDI, Field,S,E)
     S=Vpq+Vpp+Vqq
     norm_S = norm(S)
     #plot!(real(S), label = "Total")
-    println("norms: vpq", norm_vpq, "vpp", norm_vpp, "vqq", norm_vqq, "total", norm_S)
+    #println("norms: vpq", norm_vpq, "vpp", norm_vpp, "vqq", norm_vqq, "total", norm_S)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
     return S,E,H

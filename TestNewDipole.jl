@@ -31,7 +31,7 @@ const Jdisorder=0.0 # Transfer integral disorder, eV.
 const r = 20
 
 # Model setup
-const J0=0.004 #(~0.1eV)
+const J0=0.0000004 #(~0.1eV)
 modelJ(θ) = J0*cos(θ*π/180.0).^2
 
 const T=0.0032 #(~300K)
@@ -67,7 +67,7 @@ function TestNewDipole()
 
 
     #'''propagate'''
-    for i in 1:1
+    for i in 1:100
         norm_dipole = norm(dipole)
         plot(real(dipole/norm_dipole), label = "dipole")
         norm_Field = norm(Field)
