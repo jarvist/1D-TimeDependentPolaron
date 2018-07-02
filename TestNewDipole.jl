@@ -31,7 +31,7 @@ const Jdisorder=0.0 # Transfer integral disorder, eV.
 const r = 20
 
 # Model setup
-const J0=0.0000004 #(~0.1eV)
+const J0=0.0005 #(~0.1eV)
 modelJ(θ) = J0*cos(θ*π/180.0).^2
 
 const T=0.0032 #(~300K)
@@ -42,32 +42,54 @@ const dipolestrength=0.2
 
 function TestNewDipole()
     #'''prepare'''
-    M2 = zeros((N,N))
     S,E,H,psi,density = prepare_model2()
     dipole = zeros(N)
     Field = FieldFromDensity(density)
     FieldDI = FieldFromDipole(dipole)
-    S,E,H = UpdateEnergy(dipole,density,Field, FieldDI, S, E)
-    dipole,M = UpdateDipole(Field,density,dipole,M2)
+    Field = Field+FieldDI
+    S,E,H = UpdateEnergy2(dipole,Field,S,E)
+    dipole = UpdateDipole(Field,density,dipole)
 
 
-    psi=psi#+nondispersive_wavepacket(20,1.0)
+    for i in 1:100
+        S,E,H = UpdateEnergy2(dipole,Field,S,E)
+        psi = eigvecs(H)[:,1]
+        density = psi.^2
+        Field = FieldFromDensity(density)
+        Field = Field+FieldDI
+        dipole2 = UpdateDipole(Field,density,dipole)
+        FieldDI = FieldFromDipole(dipole)
+        dipole = dipole2
+        norm_dipole = norm(dipole)
+        norm_Field = norm(Field)
+        norm_FieldDI = norm(FieldDI)
+        norm_S = norm(S)
+        norm_density=norm(density)
+        xlims!(1,N)
+        ylims!(-1,1)
+        plot(real(dipole/norm_dipole), label = "dipole")
+        plot!(Field, label="Field")
+        plot!(real(density)/norm_density, label = "density")
+        plot!(real(S/norm_S), label = "energy")
+        gui()
+    end
+
+
+    psi=psi+nondispersive_wavepacket(20,4.0)
     normalise = norm(psi)
     psi = psi/normalise
     density = conj(psi).*psi
     #plot(real(density))
     #gui()
     Field = FieldFromDensity(density)
-    dipole,M = UpdateDipole(Field,density,dipole,M)
+    Field = Field+FieldDI
+    dipole = UpdateDipole(Field,density,dipole)
     FieldDI = FieldFromDipole(dipole)
-    S,E,H = UpdateEnergy(dipole,density,Field, FieldDI, S, E)
-    norm_dipole = norm(dipole)
-    #plot(real(dipole/norm_dipole))
-    #gui()
+    S,E,H = UpdateEnergy2(dipole,Field,S,E)
 
 
     #'''propagate'''
-    for i in 1:100
+    for i in 1:1000
         norm_dipole = norm(dipole)
         plot(real(dipole/norm_dipole), label = "dipole")
         norm_Field = norm(Field)
@@ -84,14 +106,14 @@ function TestNewDipole()
         #plot!((Field+FieldDI)/(norm_Field+norm_FieldDI), label = "Fields")
         plot!(real(S/norm_S), label = "energy")
         gui()
-        psi, density = Propagate(H,psi,10)
+        psi, density = Propagate(H,psi,100)
         Field = FieldFromDensity(real(density))
-        dipole,M = UpdateDipole(Field, density,dipole,M)
+        Field = Field+FieldDI
+        dipole = UpdateDipole(Field, density,dipole)
         FieldDI = FieldFromDipole(dipole)
-        S,E,H = UpdateEnergy(dipole,density, Field, FieldDI, S, E)
+        S,E,H = UpdateEnergy2(dipole,Field,S,E)
 
     end
-    return M
 end
 
 TestNewDipole()
