@@ -37,7 +37,6 @@ function FieldFromDensity(density)
         end                         # check power of r for field from point charge.
         Field[i]=Fsum/r^2
     end
-    println("Density Field = ", maximum(Field))
     return Field
 end
 
@@ -49,11 +48,10 @@ function FieldFromDipole(dipole)
             if (j==i)
                 continue # avoid infinite self energies
             end
-            FDIsum+=2*sign(j-i)*dipole[j]/(r*(j-i))^3 # How much do the dipoles respond to the electron density?
+            FDIsum+=-9*sign(j-i)*dipole[j]/((r*(j-i))^7) # How much do the dipoles respond to the electron density?
         end
         FieldDI[i]=FDIsum
     end
-    println("Dipole Field = ", maximum(FieldDI))
     return FieldDI
 end
 
@@ -81,7 +79,7 @@ function Propagate(H,psi,dt)
 end
 
 function UpdateDipole(Field,density,dipole)
-    alphainv = -1/221*ones(N)#(N*density)
+    alphainv = -1*ones(N)#(221*N*density)#
     M = diagm(alphainv)
     n=0
     n2=1
@@ -96,7 +94,7 @@ function UpdateDipole(Field,density,dipole)
         n+=N
     end
     new_dipole = \(M,Field)
-    dipole += 0.4*(new_dipole-dipole)
+    dipole += 0.5*(new_dipole-dipole)
     return dipole
 
 end

@@ -31,7 +31,7 @@ const Jdisorder=0.0 # Transfer integral disorder, eV.
 const r = 20
 
 # Model setup
-const J0=0.0005 #(~0.1eV)
+const J0=0.00001 #(~0.1eV)
 modelJ(θ) = J0*cos(θ*π/180.0).^2
 
 const T=0.0032 #(~300K)
@@ -40,15 +40,21 @@ const B=1/(T*kB) #300K * k_B in eV
 # This effectively reduces down to the 'alpha' parameter in the Frohlich polaron Hamiltonian
 const dipolestrength=0.2
 
-function TestNewDipole()
+function TestNewDipole(dipolefield::Bool = false)
     #'''prepare'''
+    maxS=[]
+    maxS2 = []
+
     S,E,H,psi,density = prepare_model2()
     dipole = zeros(N)
     Field = FieldFromDensity(density)
-    FieldDI = FieldFromDipole(dipole)
-    Field = Field+FieldDI
-    S,E,H = UpdateEnergy2(dipole,Field,S,E)
+    if dipolefield
+        FieldDI = FieldFromDipole(dipole)
+        Field = Field+FieldDI
+    end
     dipole = UpdateDipole(Field,density,dipole)
+    S,E,H = UpdateEnergy2(dipole,Field,S,E)
+
 
 
     for i in 1:100
@@ -56,13 +62,14 @@ function TestNewDipole()
         psi = eigvecs(H)[:,1]
         density = psi.^2
         Field = FieldFromDensity(density)
-        Field = Field+FieldDI
-        dipole2 = UpdateDipole(Field,density,dipole)
-        FieldDI = FieldFromDipole(dipole)
-        dipole = dipole2
+        if dipolefield
+            FieldDI = FieldFromDipole(dipole)
+            Field = Field+FieldDI
+            norm_FieldDI = norm(FieldDI)
+        end
+        dipole = UpdateDipole(Field,density,dipole)
         norm_dipole = norm(dipole)
         norm_Field = norm(Field)
-        norm_FieldDI = norm(FieldDI)
         norm_S = norm(S)
         norm_density=norm(density)
         xlims!(1,N)
@@ -75,25 +82,27 @@ function TestNewDipole()
     end
 
 
-    psi=psi+nondispersive_wavepacket(20,4.0)
+    psi=psi+nondispersive_wavepacket(2,4.0)
     normalise = norm(psi)
     psi = psi/normalise
     density = conj(psi).*psi
     #plot(real(density))
     #gui()
     Field = FieldFromDensity(density)
-    Field = Field+FieldDI
+    if dipolefield
+        FieldDI = FieldFromDipole(dipole)
+        Field = Field+FieldDI
+        norm_FieldDI = norm(FieldDI)
+    end
     dipole = UpdateDipole(Field,density,dipole)
-    FieldDI = FieldFromDipole(dipole)
     S,E,H = UpdateEnergy2(dipole,Field,S,E)
 
 
     #'''propagate'''
-    for i in 1:1000
+    for i in 1:500
         norm_dipole = norm(dipole)
         plot(real(dipole/norm_dipole), label = "dipole")
         norm_Field = norm(Field)
-        norm_FieldDI = norm(FieldDI)
         norm_S = norm(S)
         #plot!(imag(psi))
         #plot!(real(psi))
@@ -106,14 +115,28 @@ function TestNewDipole()
         #plot!((Field+FieldDI)/(norm_Field+norm_FieldDI), label = "Fields")
         plot!(real(S/norm_S), label = "energy")
         gui()
-        psi, density = Propagate(H,psi,100)
+        psi, density = Propagate(H,psi,1000)
         Field = FieldFromDensity(real(density))
-        Field = Field+FieldDI
+        if dipolefield
+            FieldDI = FieldFromDipole(dipole)
+            Field = Field+FieldDI
+            norm_FieldDI = norm(FieldDI)
+        end
         dipole = UpdateDipole(Field, density,dipole)
-        FieldDI = FieldFromDipole(dipole)
         S,E,H = UpdateEnergy2(dipole,Field,S,E)
+        append!(maxS, indmin(S))
+        Snew = S
+        filter!(x->x≠minimum(Snew),Snew)
+        append!(maxS2, indmin(Snew))
 
     end
+    return maxS,maxS2
 end
 
-TestNewDipole()
+maxNoDipole, maxNoDipole2 = TestNewDipole()
+maxDipole, maxDipole2 = TestNewDipole(true)
+
+plot(maxNoDipole, linestyle = :dot, label = "NoDipole")
+plot!(maxDipole, linestyle = :solid, label = "Dipole")
+plot!(maxNoDipole2, linestyle = :dot, label = "NoDipole2ndPeak")
+plot!(maxDipole2, linestyle = :dot, label = "Dipole2ndPeak")
