@@ -1,12 +1,7 @@
+# initialise.jl
+# Define functions to prepare global constants and plotting styles
+
 #=
-Rose Teague & Jarvist Frost 04/07/2018
-Script to initialise the system.
-Define functions to prepare global constants and plotting styles
-
-- init
-- Plotting
---------------------------------------------------------------------------------
-
 CONSTANTS
 
 Atomic units:

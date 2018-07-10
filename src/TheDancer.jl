@@ -1,5 +1,6 @@
-#= TD.jl
+# TheDancer.jl
 # Simple Julia codes to play with 1D Polaron propagation
+# By Jarvist Moore Frost and Rose Teague (2017--2018)
 
 # These codes simulate the formation of a Polaron in a 1D Tight-Binding model.
 # The model is an |N> site model, where the sites are expected to be ~molecular~ units in real space.
@@ -8,11 +9,6 @@
 # and a parameterised 'transfer integral' for the kinetic energy between nearest neighbour sites =#
 
 module TheDancer
-#=
-Module to call all the functions required for polaron surface hopping simulation.
-Set all system parameters in this module.
-=#
-
 println("\t\"He came riding fast, like a phoenix out of fire-flames.\" -- The Dancer, PJ Harvey" )
 
 export randH, SiteEnergyFromDipoles, DipolesFromDensity, TimeDependentPropagation
@@ -24,7 +20,7 @@ const UsePlots=true
 using Plots
 gr()
 
-include("init.jl")
+include("initialise.jl")
 include("models.jl")
 include("propagators.jl")
 include("simulations.jl")
