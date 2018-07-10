@@ -18,7 +18,7 @@ println("\t\"He came riding fast, like a phoenix out of fire-flames.\" -- The Da
 export randH, SiteEnergyFromDipoles, DipolesFromDensity, TimeDependentPropagation
 export Plot_S_psi_density_dipoles, overlap, Decompose_H, Plot_H
 export nondispersive_wavepacket, planewave, prepare_model, outputpng
-export SCFthenUnitary, init
+export SCFthenUnitary, init!
 
 const UsePlots=true
 using Plots
