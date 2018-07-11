@@ -101,7 +101,7 @@ function prepare_model()
     H = diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements
     psi = eigvecs(H)[:,1] # 1=gnd state
 
-    #    Plot_H(H)
+    #    plot_H(H)
     #    TODO: UPDATE THIS FOR PLOTS.jl
 
     ## Construct initial dipoles structure
@@ -111,7 +111,7 @@ function prepare_model()
 end
 
 """
-    Plotting(S,psi,density,dipoles;title="",verbose::Bool=false)
+    plot_model(S,psi,density,dipoles;title="",verbose::Bool=false)
 
 Wrapper function to pretty-print and plot time evolved state. .
 Currently  displays energy, wavefunction, electron density and dipole
@@ -123,7 +123,7 @@ dipoles - Site Dipoles
         
 Directly outputs Plots.jl plots.
 """
-function Plotting(S,psi,density,dipoles;title="",verbose::Bool=false)
+function plot_model(S,psi,density,dipoles;title="",verbose::Bool=false)
     if verbose
         println("Site energies: ",S)
         println("Psi: ",psi)
