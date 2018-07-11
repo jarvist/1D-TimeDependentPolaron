@@ -125,25 +125,12 @@ function AdiabaticPropagation(S,dipoles,E)
 end
 
 """
-    UnitaryPropagation(dipoles,S,E,psi,dt,slices::Int=1)
+    UnitaryPropagation(dipoles,S,E,psi,dt,dampening; slices::Int=1)
 
 Self-consistent response of the lattice with unitary (time dependent)
 evolution of the wavefunction.
-
-dipoles -
-S       -
-E       -
-psi     -
-dt      -
-slices  -
-
-returns:
-S       -
-psi     -
-density -
-dipoles -
 """
-function UnitaryPropagation(dipoles,S,E,psi,dt,slices::Int=1)
+function UnitaryPropagation(dipoles,S,E,psi,dt,dampening; slices::Int=1)
     S,H=SiteEnergyFromDipoles(dipoles,S,E)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,+1)

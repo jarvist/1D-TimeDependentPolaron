@@ -1,7 +1,6 @@
 # simulations.jl
 # Convenience functions which run and plot the simulation
 
-
 function overlap(psia,psib)
     overlaps=zeros(eltype(psib), size(psia,1))
     for i in 1:size(psia,1)
@@ -12,14 +11,14 @@ function overlap(psia,psib)
 end
 
 " Decompose Hamiltonian into Diagonal/S/PE and Off-diag/J/KE elements"
-function Decompose_H(H)
+function decompose_H(H)
     S=eye(N).*H # elementwise to select for just diagonal terms
     J=H-S
     return S,J
 end
 
 " Plot spectrum of (H)amiltonian, other useful info."
-function Plot_H(H)
+function plot_H(H)
     # display -> use Julia's prettyprinting, a la the REPL
     display(H)
     println("Eigenvalues: ")
@@ -63,7 +62,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     for i in 1:SCFcycles
         @printf("\tSCF loop: %d\n",i)
         S,psi,density,dipoles = AdiabaticPropagation(S,dipoles,E)
-        Plotting(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
+        plot_model(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
         if PNG outputpng() end
     end
 
@@ -86,7 +85,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
         #        psi=eigvecs(H)[:,1] # gnd state
         S,psi,density,dipoles = UnitaryPropagation(dipoles,S,E,psi,dt,dampening,slices=1)
-        Plotting(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
+        plot_model(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
         if PNG outputpng() end
 
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
@@ -110,7 +109,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
             println(" BORED! JUMPING STATE!")
             psi=eigvecs(H)[:,closestAdiabaticState+1] # TODO: +1 is a lie; but otherwise it just jumps to the ground state again and again
 
-            Plotting(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
+            plot_model(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
             if PNG outputpng() end
         end
     end
@@ -128,9 +127,7 @@ function UnitarySim(dampening,Unitarycycles; slices=5, dt=1.0, PNG::Bool=false)
     S,E,H,psi,dipoles=prepare_model()
 
 #    dipoles=[ -(x-N/2)^2*0.04 for x in 1:N ] # quadratic set of dipoles, to give energy slope across simulation
-
-    dipoles=[ (x-N/2)^3*0.0005 for x in 1:N ] # quadratic set of dipoles, to give energy slope across simulation
-
+    dipoles=[ (x-N/2)^3*0.0005 for x in 1:N ] 
 
     # Setup wavefunction for time-based propagation
     psi=nondispersive_wavepacket(10,16.0)
@@ -144,8 +141,8 @@ function UnitarySim(dampening,Unitarycycles; slices=5, dt=1.0, PNG::Bool=false)
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
         #        psi=eigvecs(H)[:,1] # gnd state
         S,psi,density,dipoles = UnitaryPropagation(dipoles,E,psi,dt,dampening,slices=slices)
-        Plotting(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
+        plot_model(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
         if PNG outputpng() end
-
     end
 end
+
