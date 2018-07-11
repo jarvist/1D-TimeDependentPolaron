@@ -2,7 +2,7 @@ push!(LOAD_PATH,"../src/") # load module from local directory
 
 using TheDancer
 
-N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r = init(50, 0.0, 0.0, 0.01, 298, 20)
+N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r = init!(50, 0.0, 0.0, 0.01, 298, 20)
 
 function main()
 
