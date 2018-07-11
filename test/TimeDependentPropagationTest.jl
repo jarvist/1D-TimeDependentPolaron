@@ -24,7 +24,7 @@ function main()
     psi_1 = psi
 
     for i in 1:200
-        psi,U=TimeDependentPropagation(psi,H,1,decompose=false,verbose=false,test=true)
+        psi,U=TimeDependentPropagation(psi_1,H,1,decompose=false,verbose=false,test=true)
         density = abs.(psi.^2)
         unit = sum(U'U)/N
         e = 1E-16

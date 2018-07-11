@@ -88,12 +88,13 @@ Update dipole vector by solving the equation E = \alpha*p
 
 field  - electrostatic field from electron density at every other site
 dipole - current dipole vector to be updated
-dipolestrength - Contains the exponential decay of the dipole response (exp(-TimeStep*DecayRate))
+dampening - Contains the exponential decay of the dipole response (exp(-TimeStep*DecayRate))
+alpha - polarisability of sites (assuming uniformity)
 
 returns:
 dipole - updates dipole moments induced by electrostatic fields
 """
-function UpdateDipole(field, dipole, dipolestrength, alpha=1.0)
+function UpdateDipole(field, dipole, dampening, alpha=1.0)
     alphainv = 1*ones(N)/alpha
     # diagonal elements from polarisability of sites
     M = diagm(alphainv)
@@ -110,7 +111,7 @@ function UpdateDipole(field, dipole, dipolestrength, alpha=1.0)
     end
     new_dipole = \(M,field)
     # Update dipoles with a fraction from the new dipole matrix
-    dipole += dipolestrength*(new_dipole-dipole)
+    dipole += dampening*(new_dipole-dipole)
     return dipole
 end
 
