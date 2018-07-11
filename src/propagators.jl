@@ -40,7 +40,7 @@ returns:
 Field - electrostatic field
 """
 function FieldFromDensity(density)
-    Field=zeros(N)
+    field=zeros(N)
     for i in 1:N
         Fsum=zero(eltype(density)) # Calculate total field at each
         for j in 1:N
@@ -49,26 +49,26 @@ function FieldFromDensity(density)
             end
             Fsum+=sign(i-j)*density[j]/(i-j)^2 # How much do the dipoles respond to the electron density?
         end                         # check power of r for field from point charge.
-        Field[i]=Fsum/r^2
+        field[i]=Fsum/r^2
     end
-    return Field
+    return field
 end
 
 """
-    UpdateDipole(Field, dipole, dipolestrength)   
+    UpdateDipole(field, dipole, dipolestrength)   
 
-Update dipole matrix by soliving the equation E = \alpha*p
+Update dipole vector by solving the equation E = \alpha*p
 
-Field  - electrostatic field from electron density at every other site
-dipole - current dipole matrix to be updated
+field  - electrostatic field from electron density at every other site
+dipole - current dipole vector to be updated
 dipolestrength - Contains the exponential decay of the dipole response (exp(-TimeStep*DecayRate))
 
 returns:
 dipole - updates dipole moments induced by electrostatic fields
 """
-function UpdateDipole(Field, dipole, dipolestrength)
+function UpdateDipole(field, dipole, dipolestrength)
     alphainv = -1*ones(N)
-    # diagonal elements from polarizability of sites
+    # diagonal elements from polarisability of sites
     M = diagm(alphainv)
     n=0
     # Off-diagonal elements from separation between sites
@@ -81,11 +81,26 @@ function UpdateDipole(Field, dipole, dipolestrength)
         end
         n+=N
     end
-    new_dipole = \(M,Field)
+    new_dipole = \(M,field)
     # Update dipoles with a fraction from the new dipole matrix
     dipole += dipolestrength*(new_dipole-dipole)
     return dipole
+end
 
+"Original JMF function; dipoles by exponential relaxation to t=+∞ solution."
+function dipoles_by_relaxation(dipoles,density,dampening)
+    for i in 1:N
+        relaxeddipole=zero(eltype(density)) # fix type instability; initialise to zero in the supplied type of density
+        for j in 1:N
+            if (j==i)
+                continue # avoid infinite self energies
+            end
+            relaxeddipole+=density[j]/(i-j)^1 # How much do the dipoles respond to the electron density?
+        end
+
+        dipoles[i]+=dampening*(relaxeddipole-dipoles[i]) # Approaches the infinite time limit via Zeno's dichotomy
+    end
+    return dipoles
 end
 
 """
