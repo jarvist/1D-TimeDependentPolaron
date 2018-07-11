@@ -7,21 +7,24 @@ push!(LOAD_PATH,"../src/")
 using TheDancer
 using Base.Test
 
-N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r = init!(50, 0.0, 0.0, 0.01, 298, 20, 1)
+N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r = init!(1, 0.0, 0.0, 0.01, 298, 20)
 
+"""
+Checks if dipoles are being updated correctly.
+
+Tests against a single dipole with alpha polarisability being induced in a
+unitary field. The dipole should then be given by alpha_test 
+"""
 function main()
-    S,E,H,psi,dipoles=prepare_model()
-    density = abs.(psi.^2)
 
-    for i in 1:500
-        S,H,psi,density,dipoles = AdiabaticPropagation(S,dipoles,E,false)
-    end
+    alpha_test = 2.63 #Polarisability volume of HCl
+    Field = [1] # Unitary Field
+    dipole = 0
 
-    Field = FieldFromDensity(density)
-    Dipoles = UpdateDipoles(Field, dipoles, 1)
+    Dipoles = UpdateDipole(Field, dipole, 1, alpha_test)
 
-    ε = 1e-6
-    @test 0.001935443 ≈ maximum(Field) atol = ε
+    ε = 1e-2
+    @test 2.63 ≈ Dipoles[1] atol = ε
 end
 
 main()
