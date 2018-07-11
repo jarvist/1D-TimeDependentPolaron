@@ -5,21 +5,22 @@ struct TightBindingModel
     N::Int
     
     H::Array
-    S::Array
-
+    S::AbstractArray  #array view of diagonal
+    J::AbstractArray  #array view of +1 diagonal
     psi::Array
     
     dipoles::Array
-end
 
-function TightBindingModel(N=20) # Inner type constructor
-    H=zeros(N,N)
-    S=view(H,1:N:N*N) # array view; currently this gets obliterated into a copy at some point?
+    function TightBindingModel(N=20) # Inner type constructor
+        H=zeros(N,N)
+        S=view(H,1:N+1:N*N) # Array view of diagonal 
+        J=view(H,2:N+1:N*N) # Array view of (N-1) off diagonal # Not currently working
 
-    psi=zeros(N)
-    dipoles=zeros(N)
+        psi=zeros(N)
+        dipoles=zeros(N)
 
-    return(TightBindingModel(N,H,S,psi,dipoles))
+        new(N,H,S,J,psi,dipoles)
+    end
 end
 
 
