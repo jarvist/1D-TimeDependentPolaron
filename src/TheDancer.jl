@@ -11,10 +11,11 @@
 module TheDancer
 println("\t\"He came riding fast, like a phoenix out of fire-flames.\" -- The Dancer, PJ Harvey" )
 
-export randH, SiteEnergyFromDipoles, DipolesFromDensity, TimeDependentPropagation
-export plot_S_psi_density_dipoles, overlap, decompose_H, plot_H
-export nondispersive_wavepacket, planewave, prepare_model, outputpng
-export SCFthenUnitary, init!
+export nondispersive_wavepacket, planewave, randH, decompose_H
+export SiteEnergyFromDipoles, DipolesFromDensity, UpdateDipole, dipoles_by_relaxation
+export AdiabaticPropagation, UnitaryPropagation, TimeDependentPropagation
+export plot_S_psi_density_dipoles, plot_H, outputpng, overlap
+export SCFthenUnitary, init!, prepare_model
 
 const UsePlots=true
 using Plots
