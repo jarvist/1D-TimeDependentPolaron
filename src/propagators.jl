@@ -24,7 +24,7 @@ function SiteEnergyFromDipoles(dipoles,S,E)
             S[i]+=sign(j-i)*dipoles[j]/(i-j)^2
         end
     end
-    S = dipolestrength*S
+    S = S
     H = diagm(E,-1)+diagm(S)+diagm(E,1)
     return S,H
 end
@@ -47,7 +47,7 @@ function FieldFromDensity(density)
             if (j==i)
                 continue # avoid infinite self energies
             end
-            Fsum+=sign(i-j)*density[j]/(i-j)^2 # How much do the dipoles respond to the electron density?
+            Fsum+=-sign(i-j)*density[j]/(i-j)^2 # How much do the dipoles respond to the electron density?
         end                         # check power of r for field from point charge.
         field[i]=Fsum/r^2
     end
@@ -93,8 +93,8 @@ dipolestrength - Contains the exponential decay of the dipole response (exp(-Tim
 returns:
 dipole - updates dipole moments induced by electrostatic fields
 """
-function UpdateDipole(field, dipole, dipolestrength)
-    alphainv = -1*ones(N)
+function UpdateDipole(field, dipole, dipolestrength, alpha=1.0)
+    alphainv = 1*ones(N)/alpha
     # diagonal elements from polarisability of sites
     M = diagm(alphainv)
     n=0
@@ -224,7 +224,7 @@ verbose     - Print unitary transformation (Boolean)
 returns:
 psi         - wavefunction
 """
-function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,verbose::Bool=false) # propagate directly using full Hamiltonian=T+V
+function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,verbose::Bool=false,test::Bool=false) # propagate directly using full Hamiltonian=T+V
     dt=dt/slices
     U=eye(H) # identiy matrix same size + type as H
 
@@ -249,9 +249,14 @@ function TimeDependentPropagation(psi,H,dt;slices::Int=1,decompose::Bool=false,v
         println("\nPre normalised Norm of psi: ",norm(psi))
     end
 
-    normalisation=sqrt(sum(abs(psi.^2))) # Nb: for normalisation of WAVEFUNCTION; must SQUAREROOT the sum of density
-    println("Normalising Psi by dividing by: ",normalisation)
+    normalisation=sqrt(sum(abs.(psi.^2))) # Nb: for normalisation of WAVEFUNCTION; must SQUAREROOT the sum of density
+    #println("Normalising Psi by dividing by: ",normalisation)
     psi=psi/normalisation # Normalise propagated wavefunction
+
+    if test
+        psi = [psi, U]
+    end
+
     return psi
 end
 
