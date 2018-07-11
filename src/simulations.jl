@@ -61,7 +61,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     # Sets up distorted lattice with polaron, before time-based propagation (should you want it)
     for i in 1:SCFcycles
         @printf("\tSCF loop: %d\n",i)
-        S,psi,density,dipoles = AdiabaticPropagation(S,dipoles,E)
+        S,H,psi,density,dipoles = AdiabaticPropagation(S,dipoles,E)
         plot_model(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
         if PNG outputpng() end
     end
@@ -84,7 +84,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     for i in 1:Unitarycycles
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
         #        psi=eigvecs(H)[:,1] # gnd state
-        S,psi,density,dipoles = UnitaryPropagation(dipoles,S,E,psi,dt,dampening,slices=1)
+        S,H,psi,density,dipoles = UnitaryPropagation(dipoles,S,E,psi,dt,dampening,slices=1)
         plot_model(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
         if PNG outputpng() end
 
@@ -127,7 +127,7 @@ function UnitarySim(dampening,Unitarycycles; slices=5, dt=1.0, PNG::Bool=false)
     S,E,H,psi,dipoles=prepare_model()
 
 #    dipoles=[ -(x-N/2)^2*0.04 for x in 1:N ] # quadratic set of dipoles, to give energy slope across simulation
-    dipoles=[ (x-N/2)^3*0.0005 for x in 1:N ] 
+    dipoles=[ (x-N/2)^3*0.0005 for x in 1:N ]
 
     # Setup wavefunction for time-based propagation
     psi=nondispersive_wavepacket(10,16.0)
@@ -145,4 +145,3 @@ function UnitarySim(dampening,Unitarycycles; slices=5, dt=1.0, PNG::Bool=false)
         if PNG outputpng() end
     end
 end
-
