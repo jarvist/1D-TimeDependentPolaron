@@ -3,7 +3,7 @@ push!(LOAD_PATH,"../src/")
 using TheDancer
 using Base.Test
 
-N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r = init!(3, 0.0, 0.0, 0.001, 298, 20,0.2)
+N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r = init!(3, 0.0, 0.0, 0.001, 298, 20)
 
 
 function main()
