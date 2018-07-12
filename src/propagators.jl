@@ -14,6 +14,7 @@ returns:
 S - Updated site energies for TightBinding Hamiltonian (Hartree)
 """
 function SiteEnergyFromDipoles(dipoles,S,E)
+    S = zeros(N)
     for i in 1:N
         for j in 1:N
             if (j==i)
@@ -21,7 +22,7 @@ function SiteEnergyFromDipoles(dipoles,S,E)
                 continue
             end
             # Contribution to site energy (1 e- at site) from dipoles
-            S[i]+=sign(j-i)*dipoles[j]/(i-j)^2
+            S[i]+=-dipoles[j]/(i-j)^3  #check if this should be ^2 or ^3
         end
     end
     S = S
