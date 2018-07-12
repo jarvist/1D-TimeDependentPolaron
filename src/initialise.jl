@@ -18,6 +18,7 @@ time = hbar/E_h (2.418884326505(16)×10−17 s)
 dipole moment = ea_0 (8.47835326(19)×10−30 C·m = 2.541746 Debye)
 polarisability = e2 a_02/E_h (1.65E-41 C^2 m^2 /J)
 temperature = E_h/kB (3.1577464E5 K)
+electric field = E_h/ea_0 (5.14220652(11)×10^11 V/m)
 =#
 
 """
@@ -31,8 +32,8 @@ Jdisorder - (eV)  Transfer integral disorder.
 J0 - (eV) Transfer Integral.
 T - (K) Temperature
 radius - (Bohr)
-    
-Edits const global:    
+
+Edits const global:
 N::Int
 Edisorder - (Hartree)
 Jdisorder - (Hartree)
@@ -53,13 +54,14 @@ function init!(num=50, Edis=0.0, Jdis=0.0, J=0.5, Temp=300, radius=1)
     # This effectively reduces down to the 'alpha' parameter in the Frohlich polaron Hamiltonian
     # Contains the exponential decay of the dipole response (exp(-TimeStep*DecayRate))
     const global dipolestrength=0.2
+    const global field_ext = 0.001#5/5.1422065E11
 
     return N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r
 end
 
 """
     randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
- 
+
 Originally borrowed from 'Sturm': https://github.com/jarvist/Teclo/blob/master/Sturm.jl
 
 Determine on-site and nearest neighbour energies for TightBinding
@@ -77,7 +79,7 @@ S - Diagonal elements of TightBinding Hamiltonian (Hartree)
 E - Off-diagonal elements of TightBinding Hamiltonian (Hartree)
 """
 function randH(SiteEnergy, Edisorder, Jdisorder, modelJ, N)
-    
+
     S=SiteEnergy + Edisorder*randn(N)
     E=modelJ + Jdisorder*randn(N-1)
     return (S,E)
@@ -115,12 +117,12 @@ end
 
 Wrapper function to pretty-print and plot time evolved state. .
 Currently  displays energy, wavefunction, electron density and dipole
-        
+
 S - On-site energies (Hartrees)
 psi - Wavefunction
 density - Electron Density
 dipoles - Site Dipoles
-        
+
 Directly outputs Plots.jl plots.
 """
 function plot_model(S,psi,density,dipoles;title="",verbose::Bool=false)
@@ -150,4 +152,3 @@ function plot_model(S,psi,density,dipoles;title="",verbose::Bool=false)
     gui()
 
 end
-

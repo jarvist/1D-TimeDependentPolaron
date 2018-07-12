@@ -13,7 +13,7 @@ S - previous site energies (Hartree)
 returns:
 S - Updated site energies for TightBinding Hamiltonian (Hartree)
 """
-function SiteEnergyFromDipoles(dipoles,S,E)
+function SiteEnergyFromDipoles(dipoles,density,S,E)
     S = zeros(N)
     for i in 1:N
         for j in 1:N
@@ -25,7 +25,7 @@ function SiteEnergyFromDipoles(dipoles,S,E)
             S[i]+=-dipoles[j]/(i-j)^3  #check if this should be ^2 or ^3
         end
     end
-    S = S
+    S = S #- density*field_ext add in effects of field on charge at each site. Think about external field
     H = diagm(E,-1)+diagm(S)+diagm(E,1)
     return S,H
 end
@@ -83,7 +83,7 @@ function FieldFromDipole(dipole)
 end
 
 """
-    UpdateDipole(field, dipole, dipolestrength)
+    UpdateDipole(field, dipole, dampening, alpha)
 
 Update dipole vector by solving the equation E = \alpha*p
 
@@ -96,7 +96,7 @@ returns:
 dipole - updates dipole moments induced by electrostatic fields
 """
 function UpdateDipole(field, dipole, dampening, alpha=1.0)
-    alphainv = 1*ones(N)/alpha
+    alphainv = 1*ones(N)/alpha#*dipolestrength
     # diagonal elements from polarisability of sites
     M = diagm(alphainv)
     n=0
@@ -151,8 +151,8 @@ psi     -
 Density -
 dipoles -
 """
-function AdiabaticPropagation(S,dipoles,E,verbose::Bool=true,dipole_int::Bool=false)
-    S,H = SiteEnergyFromDipoles(dipoles,S,E)
+function AdiabaticPropagation(S,dipoles,density,E,dampening,verbose::Bool=true,dipole_int::Bool=false)
+    S,H = SiteEnergyFromDipoles(dipoles,density,S,E)
     psi=eigvecs(H)[:,1] # gnd state
 
     if verbose
@@ -164,12 +164,12 @@ function AdiabaticPropagation(S,dipoles,E,verbose::Bool=true,dipole_int::Bool=fa
     end
 
     density=psi.^2
-    Field=FieldFromDensity(density)
-    dipoles = UpdateDipole(Field, dipoles, dipolestrength)
+    Field=FieldFromDensity(density)+field_ext
+    dipoles = UpdateDipole(Field, dipoles, dampening)
 
     if dipole_int
         FieldDI = FieldFromDipole(dipoles)
-        dipoles = UpdateDipole(Field+FieldDI, dipoles, dipolestrength)
+        dipoles = UpdateDipole(Field+FieldDI, dipoles, dampening)
     end
 
     return S,H,psi,density,dipoles
@@ -181,8 +181,8 @@ end
 Self-consistent response of the lattice with unitary (time dependent)
 evolution of the wavefunction.
 """
-function UnitaryPropagation(dipoles,S,E,psi,dt,dampening; slices::Int=1)
-    S,H=SiteEnergyFromDipoles(dipoles,S,E)
+function UnitaryPropagation(dipoles,density,S,E,psi,dt,dampening; slices::Int=1)
+    S,H=SiteEnergyFromDipoles(dipoles,density,S,E)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,+1)
 
@@ -200,7 +200,7 @@ function UnitaryPropagation(dipoles,S,E,psi,dt,dampening; slices::Int=1)
 
     density=abs(psi.^2) # can be Complex!
 
-    Field=FieldFromDensity(density)
+    Field=FieldFromDensity(density)+field_ext
     dipoles = UpdateDipole(Field, dipoles, dipolestrength)
 
     return S,H,psi,density,dipoles

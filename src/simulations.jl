@@ -56,12 +56,12 @@ end
 function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
 
     S,E,H,psi,dipoles=prepare_model()
-
+    density = psi.^2
     # Self consistent field loop; Adiabatic response of lattice + polaron
     # Sets up distorted lattice with polaron, before time-based propagation (should you want it)
     for i in 1:SCFcycles
         @printf("\tSCF loop: %d\n",i)
-        S,H,psi,density,dipoles = AdiabaticPropagation(S,dipoles,E)
+        S,H,psi,density,dipoles = AdiabaticPropagation(S,dipoles,density,E,dampening)
         plot_model(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
         if PNG outputpng() end
     end
@@ -70,7 +70,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     psi=eigvecs(H)[:,2] # 1=gnd state, 2=1st excited state, etc.
 
     # Setup wavefunction for time-based propagation
-    psi=psi+nondispersive_wavepacket(15,4.0)
+    psi=psi+nondispersive_wavepacket(20,4.0)
 
     #        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
     #        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
@@ -79,12 +79,13 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     dt=1000 # Time step
     # As energy is in eV; hbar=1; we believe unit is ħ/q = ~0.658 fs
 
+
     println("Psi: ",psi)
     #myplot=lineplot(psi,name="Psi",color=:red,width=80,ylim=[-1,1])
     for i in 1:Unitarycycles
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
         #        psi=eigvecs(H)[:,1] # gnd state
-        S,H,psi,density,dipoles = UnitaryPropagation(dipoles,S,E,psi,dt,dampening,slices=1)
+        S,H,psi,density,dipoles = UnitaryPropagation(dipoles,density,S,E,psi,dt,dampening,slices=1)
         plot_model(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
         if PNG outputpng() end
 
@@ -107,7 +108,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
         # For now we just randomly jump
         if i%50==0
             println(" BORED! JUMPING STATE!")
-            psi=eigvecs(H)[:,closestAdiabaticState+1] # TODO: +1 is a lie; but otherwise it just jumps to the ground state again and again
+            psi=eigvecs(H)[:,closestAdiabaticState] # TODO: +1 is a lie; but otherwise it just jumps to the ground state again and again
 
             plot_model(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
             if PNG outputpng() end
