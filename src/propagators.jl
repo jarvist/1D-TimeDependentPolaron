@@ -16,13 +16,14 @@ S - Updated site energies for TightBinding Hamiltonian (Hartree)
 function SiteEnergyFromDipoles(dipoles,density,S,E)
     S = zeros(N)
     for i in 1:N
+        S[i]+=-field_ext*(r*i) #20000 Bohr ~ 1mm = device width??? This needs to be checked
         for j in 1:N
             if (j==i)
                 # avoid infinity in self energies
                 continue
             end
             # Contribution to site energy (1 e- at site) from dipoles
-            S[i]+=-dipoles[j]/(i-j)^3  #check if this should be ^2 or ^3
+            S[i]+=-dipoles[j]/(r*(i-j))^3 
         end
     end
     S = S #- density*field_ext add in effects of field on charge at each site. Think about external field

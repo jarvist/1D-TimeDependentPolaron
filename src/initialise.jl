@@ -54,7 +54,7 @@ function init!(num=50, Edis=0.0, Jdis=0.0, J=0.5, Temp=300, radius=1)
     # This effectively reduces down to the 'alpha' parameter in the Frohlich polaron Hamiltonian
     # Contains the exponential decay of the dipole response (exp(-TimeStep*DecayRate))
     const global dipolestrength=0.2
-    const global field_ext = 0.001#5/5.1422065E11
+    const global field_ext = 5E-8#0.6/5.1422065E11
 
     return N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r
 end
