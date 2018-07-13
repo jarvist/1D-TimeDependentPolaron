@@ -2,8 +2,6 @@ push!(LOAD_PATH,"../src/")
 
 using TheDancer
 using Base.Test
-using Plots
-gr()
 
 N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r = init!(3, 0.0, 0.0, 0.001, 298, 20)
 
