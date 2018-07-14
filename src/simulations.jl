@@ -53,16 +53,23 @@ function outputpng()
     #println("Just output frame: $framecounter")
 end
 
-function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
+function SCFthenUnitary(dampening, SCFcycles, Unitarycycles,eigenergy::Bool=false; PNG::Bool=false)
 
     S,E,H,psi,dipoles=prepare_model()
     density = psi.^2
+    if eigenergy
+        Energies = zeros((N,SCFcycles+Unitarycycles))
+    end
     # Self consistent field loop; Adiabatic response of lattice + polaron
     # Sets up distorted lattice with polaron, before time-based propagation (should you want it)
     for i in 1:SCFcycles
         @printf("\tSCF loop: %d\n",i)
         S,H,psi,density,dipoles = AdiabaticPropagation(S,dipoles,density,E,dampening)
-        plot_model(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
+        if eigenergy
+            Energies[(i-1)*N+1:i*N]=eigvals(H)
+        else
+            plot_model(S,psi,density,dipoles,title="Dampening: $dampening SCF (Adiabatic): Cycle $i / $SCFcycles")
+        end
         if PNG outputpng() end
     end
 
@@ -70,7 +77,7 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
     psi=eigvecs(H)[:,2] # 1=gnd state, 2=1st excited state, etc.
 
     # Setup wavefunction for time-based propagation
-    psi=psi+nondispersive_wavepacket(20,4.0)
+    psi=psi+1.5*nondispersive_wavepacket(35,4.0)
 
     #        psi=nondispersive_wavepacket(20,8.0) # Centered on 20, with Width (speed?) 8.0
     #        psi=psi+nondispersive_wavepacket(40,-20.0) # Fight of the wavepackets!
@@ -86,7 +93,12 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
         @printf("\n\tUnitary Propagation Loop: %d\n",i)
         #        psi=eigvecs(H)[:,1] # gnd state
         S,H,psi,density,dipoles = UnitaryPropagation(dipoles,density,S,E,psi,dt,dampening,slices=1)
-        plot_model(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
+        if eigenergy
+            j = i+SCFcycles
+            Energies[(j-1)*N+1:j*N]=eigvals(H)
+        else
+            plot_model(S,psi,density,dipoles,title="Dampening: $dampening TDSE: Cycle $i / $Unitarycycles")
+        end
         if PNG outputpng() end
 
         H=diagm(E,-1)+diagm(S)+diagm(E,1) #build full matrix from diagonal elements; for comparison
@@ -110,9 +122,17 @@ function SCFthenUnitary(dampening, SCFcycles, Unitarycycles; PNG::Bool=false)
             println(" BORED! JUMPING STATE!")
             psi=eigvecs(H)[:,closestAdiabaticState] # TODO: +1 is a lie; but otherwise it just jumps to the ground state again and again
 
-            plot_model(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
+            if eigenergy
+                j = i+SCFcycles
+                Energies[(j-1)*N+1:j*N]=eigvals(H)
+            else
+                plot_model(S,psi,density,dipoles,title="JUMPING JACK FLASH TO: $closestAdiabaticState")
+            end 
             if PNG outputpng() end
         end
+    end
+    if eigenergy
+        return Energies
     end
 end
 
