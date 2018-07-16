@@ -13,20 +13,20 @@ S - previous site energies (Hartree)
 returns:
 S - Updated site energies for TightBinding Hamiltonian (Hartree)
 """
-function SiteEnergyFromDipoles(dipoles,density,S,E)
+function SiteEnergyFromDipoles(dipoles,S,E)
     S = zeros(N)
     for i in 1:N
-        S[i]+=-field_ext*(r*i) #20000 Bohr ~ 1mm = device width??? This needs to be checked
+        S[i]+=-field_ext*(r*i)
         for j in 1:N
             if (j==i)
                 # avoid infinity in self energies
                 continue
             end
             # Contribution to site energy (1 e- at site) from dipoles
-            S[i]+=-dipoles[j]/(r*(i-j))^3 
+            S[i]+=sign(j-i)*dipoles[j]/(r*(i-j))^2
         end
     end
-    S = S #- density*field_ext add in effects of field on charge at each site. Think about external field
+    S = S
     H = diagm(E,-1)+diagm(S)+diagm(E,1)
     return S,H
 end
@@ -153,7 +153,7 @@ Density -
 dipoles -
 """
 function AdiabaticPropagation(S,dipoles,density,E,dampening,verbose::Bool=true,dipole_int::Bool=false)
-    S,H = SiteEnergyFromDipoles(dipoles,density,S,E)
+    S,H = SiteEnergyFromDipoles(dipoles,S,E)
     psi=eigvecs(H)[:,1] # gnd state
 
     if verbose
@@ -183,7 +183,7 @@ Self-consistent response of the lattice with unitary (time dependent)
 evolution of the wavefunction.
 """
 function UnitaryPropagation(dipoles,density,S,E,psi,dt,dampening; slices::Int=1)
-    S,H=SiteEnergyFromDipoles(dipoles,density,S,E)
+    S,H=SiteEnergyFromDipoles(dipoles,S,E)
 
     H=diagm(E,-1)+diagm(S)+diagm(E,+1)
 
