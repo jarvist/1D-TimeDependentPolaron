@@ -42,21 +42,22 @@ T - (E_h/kB)
 B - (1/E_h)
 r - (Bohr)
 """
-function init!(num=50, Edis=0.0, Jdis=0.0, J=0.5, Temp=300, radius=1)
+function init!(num=20, Edis=0.0, Jdis=0.0, J=0.5, Temp=300, radius=1)
     const global N=num
-    const global Edisorder=Edis
-    const global Jdisorder=Jdis
-    const global J0=J/27.211385
-    const global modelJ = J0*cos(π/180.0).^2
-    const global T=Temp/3.1577464E5
-    const global B=1/T
+
+#    const global Edisorder=Edis
+#    const global Jdisorder=Jdis
+#    const global J0=J/27.211385
+#    const global modelJ = J0*cos(π/180.0).^2
+#    const global T=Temp/3.1577464E5
+#    const global B=1/T
     const global r=radius
     # This effectively reduces down to the 'alpha' parameter in the Frohlich polaron Hamiltonian
     # Contains the exponential decay of the dipole response (exp(-TimeStep*DecayRate))
     const global dipolestrength=0.2
     const global field_ext = 5E-8#0.6/5.1422065E11
 
-    return N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r
+#    return N, Edisorder, Jdisorder, modelJ, B, dipolestrength, r
 end
 
 """

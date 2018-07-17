@@ -1,5 +1,5 @@
-# models.jl
-# Specification of the 1D models
+# wavepackets.jl
+# 1D wavepackets to add to the simulation
 
 """
     nondispersive_wavepacket(x0, λ)
