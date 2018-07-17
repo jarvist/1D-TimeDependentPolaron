@@ -152,3 +152,4 @@ function plot_model(S,psi,density,dipoles;title="",verbose::Bool=false)
     gui()
 
 end
+

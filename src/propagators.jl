@@ -282,3 +282,4 @@ function TimeDependentPropagation(psi,H,dt,E)
 #    psi/=norm(psi*psi') # Normalise propagated wavefunction
     return psi
 end
+
