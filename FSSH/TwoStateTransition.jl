@@ -56,11 +56,11 @@ initial_velocity = v_0
 acceleration = F_m(initial_position)/mass
 time_step = dt
 """
-function classical_propagation(F_m, m, x_0, x_min)
+function classical_propagation(F_m, m, x_0, x_min, v_0)
     slope = (F_m(x_0) - F_m(x_0+2))/2.0
     omega = sqrt(slope/m)
-    x(t) = x_min + ((x_0-x_min)/2)*(exp(-im*omega*t) + exp(im*omega*t))
-    v(t) = omega*im*((x_0-x_min)/2)*(exp(-im*omega*t) - exp(im*omega*t))
+    x(t) = x_min + ((x_0-x_min)/2)*(exp(-im*omega*t) + exp(im*omega*t)) +v_0*t
+    v(t) = v_0 - omega*im*((x_0-x_min)/2)*(exp(-im*omega*t) - exp(im*omega*t))
     return x, v
 end
 
@@ -72,7 +72,7 @@ function plot_trajectory(x_0::Float64, v_0::Float64, R_0, F_m, m, dt,T,a_p_m)
     f = zeros(T)
     kinetic_energy = zeros(T)
     potential_energy = zeros(T)
-    x, v = classical_propagation(F_m, m, x_0, R_0)
+    x, v = classical_propagation(F_m, m, x_0, R_0, v_0)
     xs = zeros(T)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
     f_xmin = f_xmax = F_m(x_0)
@@ -198,6 +198,7 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
 
     PESi = true
 
+    T_E = zeros(T)
     xs = zeros(T+1)
     xs[1] = x_0; x_new = x_0
     p1 = plot(r -> n_a_p_i(r),0,20)
@@ -206,17 +207,17 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
     t = 0; t_total = 0; gf_21 = 0; g1_12 = 0;
     xi, vi = classical_propagation(F_i, m, x_new, 5)
 
-    while t_total<(T-2)
+    while t+t_total<(T-2)
         if PESi
             x_new = xs[Int(2+(t+t_total)/dt)] = real(xi(t))
-            vi_new = real(vi(t))
+            v_new = real(vi(t))
             V = n_a_p_i(x_new)
-            gi_12 = g_12(15, xs[Int(1+(t+t_total)/dt)], xs[Int(2+(t+t_total)/dt)], dt, n_a_p_i, n_a_p_f, J_if)
+            gi_12 = g_12(10, xs[Int(1+(t+t_total)/dt)], xs[Int(2+(t+t_total)/dt)], dt, n_a_p_i, n_a_p_f, J_if)
             t+=dt
             #println(x_new)
         else
             x_new = xs[Int(2+(t+t_total)/dt)] = real(xf(t))
-            vf_new = real(vf(t))
+            v_new = real(vf(t))
             V = n_a_p_f(x_new)
             #println( xs[Int(1+(t+t_total)/dt)], " ", xs[Int(2+(t+t_total)/dt)])
             gf_21 = g_21(5, xs[Int(1+(t+t_total)/dt)], xs[Int(2+(t+t_total)/dt)], dt, n_a_p_i, n_a_p_f, J_if)
@@ -225,12 +226,16 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
         end
         chi = Distributions.Uniform()
         chi_rand = rand(chi)
+        K_E = 0.5*m*v_new^2
+        P_E = V
+        T_E[Int(2+(t+t_total)/dt)] = K_E + P_E
+        print(T_E)
         #println("chi = ", chi_rand, " g_12 = ", gi_12, " g_21 = ", gf_21)
         if chi_rand < max(abs(gi_12), abs(gf_21))
             println(PESi," SWAP ", chi_rand)
             if PESi
                 PESi = false
-                xf, vf = classical_propagation(F_f, m, x_new, 15)
+                xf, vf = classical_propagation(F_f, m, x_new, 10)
                 t_total += t
                 t = dt
                 gi_12 = 0
@@ -247,6 +252,7 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
         p1 = plot!(r -> n_a_p_f(r),0,20)
         p1 = scatter!([x_new],[V], markershape = :circle, color = :black)
         gui()
-    end
 
+    end
+    return T_E
 end
