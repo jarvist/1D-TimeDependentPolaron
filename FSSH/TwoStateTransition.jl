@@ -59,8 +59,11 @@ time_step = dt
 function classical_propagation(F_m, m, x_0, x_min, v_0)
     slope = (F_m(x_0) - F_m(x_0+2))/2.0
     omega = sqrt(slope/m)
-    x(t) = x_min + ((x_0-x_min)/2)*(exp(-im*omega*t) + exp(im*omega*t)) +v_0*t
-    v(t) = v_0 - omega*im*((x_0-x_min)/2)*(exp(-im*omega*t) - exp(im*omega*t))
+    phase = atan(v_0/(omega*(x_0-x_min)))/omega
+    #println(phase, "     ", (x_0-x_min)/(2*cos(omega*phase)), "    ", (v_0)/(2*omega*sin(omega*phase)))
+    A = (x_0-x_min)/(2*cos(omega*phase))
+    x(t) = x_min + A*(exp(-im*omega*(t-phase)) + exp(im*omega*(t-phase)))
+    v(t) = omega*im*A*(-exp(-im*omega*(t-phase)) + exp(im*omega*(t-phase)))
     return x, v
 end
 
@@ -192,6 +195,17 @@ function g_21(R_2, R_1, R_i1, dt, n_a_p_i, n_a_p_f, J_if)
     return g_21
 end
 
+
+framecounter=0 # variable to keep track of which frame / plot for later movie we are in
+
+function outputpng()
+    global framecounter
+
+    Plots.png(@sprintf("%05D.png",framecounter)) # Save plot to PNG file; with XXXXX.png filename
+    framecounter=framecounter+1
+    #println("Just output frame: $framecounter")
+end
+
 """
 """
 function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
@@ -205,13 +219,14 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
     p1 = plot!(r -> n_a_p_f(r),0,20)
     p1 = scatter!([x_0],[F_i(x_0)], markershape = :circle, color = :black)
     t = 0; t_total = 0; gf_21 = 0; g1_12 = 0;
-    xi, vi = classical_propagation(F_i, m, x_new, 5)
+    xi, vi = classical_propagation(F_i, m, x_new, 5, 0.)
 
     while t+t_total<(T-2)
         if PESi
             x_new = xs[Int(2+(t+t_total)/dt)] = real(xi(t))
             v_new = real(vi(t))
             V = n_a_p_i(x_new)
+            V_change = n_a_p_f(x_new)
             gi_12 = g_12(10, xs[Int(1+(t+t_total)/dt)], xs[Int(2+(t+t_total)/dt)], dt, n_a_p_i, n_a_p_f, J_if)
             t+=dt
             #println(x_new)
@@ -219,6 +234,7 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
             x_new = xs[Int(2+(t+t_total)/dt)] = real(xf(t))
             v_new = real(vf(t))
             V = n_a_p_f(x_new)
+            V_change = n_a_p_i(x_new)
             #println( xs[Int(1+(t+t_total)/dt)], " ", xs[Int(2+(t+t_total)/dt)])
             gf_21 = g_21(5, xs[Int(1+(t+t_total)/dt)], xs[Int(2+(t+t_total)/dt)], dt, n_a_p_i, n_a_p_f, J_if)
             t+=dt
@@ -229,22 +245,27 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
         K_E = 0.5*m*v_new^2
         P_E = V
         T_E[Int(2+(t+t_total)/dt)] = K_E + P_E
-        print(T_E)
         #println("chi = ", chi_rand, " g_12 = ", gi_12, " g_21 = ", gf_21)
-        if chi_rand < max(abs(gi_12), abs(gf_21))
-            println(PESi," SWAP ", chi_rand)
-            if PESi
-                PESi = false
-                xf, vf = classical_propagation(F_f, m, x_new, 10)
-                t_total += t
-                t = dt
-                gi_12 = 0
-            else
-                PESi = true
-                xi, vi = classical_propagation(F_i, m, x_new, 5)
-                t_total += t
-                t = dt
-                gf_21 = 0
+        if chi_rand < max(gi_12, gf_21)
+
+            if T_E[Int(2+(t+t_total)/dt)] > V_change
+                v_new2 = sign(v_new)*sqrt(v_new^2+2*(V-V_change)/m)
+
+                if PESi
+                    println(PESi," SWAP ", gi_12)
+                    PESi = false
+                    xf, vf = classical_propagation(F_f, m, x_new, 10.,v_new2)
+                    t_total += t
+                    t = dt
+                    gi_12 = 0
+                else
+                    println(PESi," SWAP ", gf_21)
+                    PESi = true
+                    xi, vi = classical_propagation(F_i, m, x_new, 5,v_new2)
+                    t_total += t
+                    t = dt
+                    gf_21 = 0
+                end
             end
         end
 
@@ -252,7 +273,8 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
         p1 = plot!(r -> n_a_p_f(r),0,20)
         p1 = scatter!([x_new],[V], markershape = :circle, color = :black)
         gui()
-
+        outputpng()
     end
-    return T_E
+    plot(T_E)
+    gui()
 end
