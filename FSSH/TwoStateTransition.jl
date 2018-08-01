@@ -56,40 +56,48 @@ initial_velocity = v_0
 acceleration = F_m(initial_position)/mass
 time_step = dt
 """
-function classical_propagation(F_m, m, x_0, x_min, v_0)
-    slope = (F_m(x_0) - F_m(x_0+2))/2.0
+function classical_propagation(F_m, m, x_0, R_i0, R_f0, v_0)
+    x_eq = R_f0 - R_i0
+    slope = (F_m(x_0/2) - F_m(x_0/2+2))/2.0
     omega = sqrt(slope/m)
-    phase = atan(v_0/(omega*(x_0-x_min)))/omega
+    phase = atan(v_0/(omega*(x_0-x_eq)))/omega
     #println(phase, "     ", (x_0-x_min)/(2*cos(omega*phase)), "    ", (v_0)/(2*omega*sin(omega*phase)))
-    A = (x_0-x_min)/(2*cos(omega*phase))
-    x(t) = x_min + A*(exp(-im*omega*(t-phase)) + exp(im*omega*(t-phase)))
+    A = (x_0-x_eq)/(2*cos(omega*phase))
+    x(t) = x_eq + A*(exp(-im*omega*(t-phase)) + exp(im*omega*(t-phase)))
     v(t) = omega*im*A*(-exp(-im*omega*(t-phase)) + exp(im*omega*(t-phase)))
     return x, v
 end
 
 """
 Function to trace motion of atom
+x_0 = initial displacement from equilibrium bond length.
 """
-function plot_trajectory(x_0::Float64, v_0::Float64, R_0, F_m, m, dt,T,a_p_m)
+function plot_trajectory(dx::Float64, v_0::Float64, R_i0, R_f0, F_i, m, dt,T, n_a_p_i, n_a_p_f)
     trace = zeros(T)
     f = zeros(T)
     kinetic_energy = zeros(T)
     potential_energy = zeros(T)
-    x, v = classical_propagation(F_m, m, x_0, R_0, v_0)
+    x_i0 = R_i0 - dx; x_f0 = R_f0 + dx; x_eq = R_f0 - R_i0
+    x, v = classical_propagation(F_i, m, x_i0, R_i0, R_f0, v_0)
     xs = zeros(T)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
-    f_xmin = f_xmax = F_m(x_0)
-    p1 = plot(r -> a_p_m(r),0,20)
-    p1 = scatter!([x_0],[F_m(x_0)], markershape = :circle, color = :black)
+    f_xmin = f_xmax = F_i(x_i0)
+    p1 = plot(r -> n_a_p_i(r),0,20)
+    p1 = scatter!([R_i0-x_i0],[F_i(x_i0/2)], markershape = :circle, color = :black)
     for i in 1:T
         t = i*dt
-        x_new = xs[i] = real(x(t))
+        xs[i] = real(x(t))
+        x1_new = R_i0-real(x(t)-x_eq)/2
+        x2_new = R_f0 + real(x(t)-x_eq)/2
         v_new = real(v(t))
-        V = a_p_m(x_new)
+        V1 = n_a_p_i(x1_new)
+        V2 = n_a_p_f(x2_new)
         kinetic_energy[i] = 0.5*m*v_new^2
-        potential_energy[i] = V
-        p1 = plot(r -> a_p_m(r),0,20)
-        p1 = scatter!([x_new],[V], markershape = :circle, color = :black)
+        potential_energy[i] = V2+V1
+        p1 = plot(r -> n_a_p_i(r),0,20)
+        p1 = plot!(r -> n_a_p_f(r),0,20)
+        p1 = scatter!([x1_new],[V1], markershape = :circle, color = :black)
+        p1 = scatter!([x2_new],[V2], markershape = :circle, color = :black)
         gui()
     end
 
@@ -195,17 +203,6 @@ function g_21(R_2, R_1, R_i1, dt, n_a_p_i, n_a_p_f, J_if)
     return g_21
 end
 
-
-framecounter=0 # variable to keep track of which frame / plot for later movie we are in
-
-function outputpng()
-    global framecounter
-
-    Plots.png(@sprintf("%05D.png",framecounter)) # Save plot to PNG file; with XXXXX.png filename
-    framecounter=framecounter+1
-    #println("Just output frame: $framecounter")
-end
-
 """
 """
 function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
@@ -273,8 +270,6 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
         p1 = plot!(r -> n_a_p_f(r),0,20)
         p1 = scatter!([x_new],[V], markershape = :circle, color = :black)
         gui()
-        outputpng()
     end
-    plot(T_E)
-    gui()
+
 end
