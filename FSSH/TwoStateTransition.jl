@@ -83,7 +83,6 @@ function plot_trajectory(dx::Float64, v_0::Float64, R_i0, R_f0, F_i, m, dt,T, n_
     #p1 = scatter([x_0], markershape = :circle, color = :black)
     f_xmin = f_xmax = F_i(x_i0)
     p1 = plot(r -> n_a_p_i(r),0,20)
-    p1 = scatter!([R_i0-x_i0],[F_i(x_i0/2)], markershape = :circle, color = :black)
     for i in 1:T
         t = i*dt
         xs[i] = real(x(t))
@@ -169,13 +168,13 @@ end
 """
 Function to calculate non-adiabatic coupling vector
 """
-function NACV(R_1, R_2, R_i2, dt)
+function NACV(R_1, R_2, dR, dt)
     Phis(R) = non_adiabatic_states(R,[R_1,R_2])
     Phi_1(R) = Phis(R)[1]
     Phi_2(R) = Phis(R)[2]
     #grad_phi_1(R) = derivative(r->Phi_1(r),R)
-    grad_phi_2(R) = derivative(r->Phis(r)[2],R)
-    overlap(R) = dot(conj(Phi_1(R)),grad_phi_2(R))*(R_2 - R_i2)/dt #fix the time derivative of R.
+    grad_phi_2(R) = derivative(r->Phi_2(r),R)
+    overlap(R) = dot(conj(Phi_1(R)),grad_phi_2(R))*(dR)/dt #fix the time derivative of R.
     d_jk = (quadgk(overlap, 0, 20))[1]
     return d_jk
 end
@@ -184,10 +183,10 @@ end
 Function to calculate switching probabilities
 Just considering state on V_11 to start.
 """
-function g_12(R_1, R_2, R_i2, dt, n_a_p_i, n_a_p_f, J_if)
-    d_12 = NACV(R_1, R_2, R_i2, dt)
-    psi_1 = adiabatic_states(R_1, n_a_p_i, n_a_p_f, J_if)[:,1]
-    g_12 = 2*real(conj(psi_1[2])*psi_1[1]*R_2*d_12)*dt/(psi_1[1]*conj(psi_1[1]))
+function g_12(R_1, R_2, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
+    d_12 = NACV(R_1, R_2, dR, dt)
+    psi = adiabatic_states(R_2, n_a_p_i, n_a_p_f, J_if)[:,APES]
+    g_12 = 2*real(conj(psi[2])*psi[1]*dR*d_12)*dt/(psi[1]*conj(psi[1]))
     return g_12
 end
 
@@ -196,69 +195,86 @@ end
 Function to calculate switching probabilities
 Just considering state on V_22 to start.
 """
-function g_21(R_2, R_1, R_i1, dt, n_a_p_i, n_a_p_f, J_if)
-    d_21 = NACV(R_2, R_1, R_i1, dt)
-    psi_1 = adiabatic_states(R_1, n_a_p_i, n_a_p_f, J_if)[:,2]
-    g_21 = 2*real(conj(psi_1[1])*psi_1[2]*R_2*d_21)*dt/(psi_1[2]*conj(psi_1[2]))
+function g_21(R_2, R_1, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
+    d_21 = NACV(R_2, R_1, dR, dt)
+    psi = adiabatic_states(R_1, n_a_p_i, n_a_p_f, J_if)[:,APES]
+    g_21 = 2*real(conj(psi[1])*psi[2]*dR*d_21)*dt/(psi[2]*conj(psi[2]))
     return g_21
 end
 
 """
 """
-function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
+function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J_if)
 
     PESi = true
 
-    T_E = zeros(T)
+    Total_E = zeros(T+2)
     xs = zeros(T+1)
-    xs[1] = x_0; x_new = x_0
+    xs[1] = dx; x1_new = R_i0-dx/2; x2_new = R_f0 +dx/2; xe = x1_new; x_eq = R_f0-R_i0
     p1 = plot(r -> n_a_p_i(r),0,20)
     p1 = plot!(r -> n_a_p_f(r),0,20)
-    p1 = scatter!([x_0],[F_i(x_0)], markershape = :circle, color = :black)
     t = 0; t_total = 0; gf_21 = 0; g1_12 = 0;
-    xi, vi = classical_propagation(F_i, m, x_new, 5, 0.)
+    x, v = classical_propagation(F_i, m, x1_new, R_i0, R_f0, 0.)
 
     while t+t_total<(T-2)
+        xs[Int(2+(t+t_total)/dt)] = real(x(t))
+        x1_new = R_i0-real(x(t)-x_eq)/2
+        x2_new = R_f0 + real(x(t)-x_eq)/2
+        v_new = real(v(t))
+        V1 = n_a_p_i(x1_new)
+        V2 = n_a_p_f(x2_new)
+        dR = (xs[Int(2+(t+t_total)/dt)] - xs[Int(1+(t+t_total)/dt)])/2
         if PESi
-            x_new = xs[Int(2+(t+t_total)/dt)] = real(xi(t))
-            v_new = real(vi(t))
-            V = n_a_p_i(x_new)
-            V_change = n_a_p_f(x_new)
-            gi_12 = g_12(10, xs[Int(1+(t+t_total)/dt)], xs[Int(2+(t+t_total)/dt)], dt, n_a_p_i, n_a_p_f, J_if)
-            t+=dt
+            xe = x1_new; Ve = V1
+            V_change = n_a_p_f(x2_new)
+            if V_change>V1
+                APES = 1
+            else
+                APES = 2
+            end
+            gi_12 = g_12(x2_new, xe, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
             #println(x_new)
         else
-            x_new = xs[Int(2+(t+t_total)/dt)] = real(xf(t))
-            v_new = real(vf(t))
-            V = n_a_p_f(x_new)
-            V_change = n_a_p_i(x_new)
-            #println( xs[Int(1+(t+t_total)/dt)], " ", xs[Int(2+(t+t_total)/dt)])
-            gf_21 = g_21(5, xs[Int(1+(t+t_total)/dt)], xs[Int(2+(t+t_total)/dt)], dt, n_a_p_i, n_a_p_f, J_if)
-            t+=dt
+            xe = x2_new; Ve = V2
+            V_change = n_a_p_f(x2_new)
+            if V_change>V2
+                APES = 1
+            else
+                APES = 2
+            end
+            gf_21 = g_21(x1_new, xe, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
             #println(x_new)
         end
+        t+=dt
+
         chi = Distributions.Uniform()
         chi_rand = rand(chi)
+        if chi_rand < 0.01
+            println(chi_rand, "    ", max(gi_12, gf_21))
+        end
         K_E = 0.5*m*v_new^2
-        P_E = V
-        T_E[Int(2+(t+t_total)/dt)] = K_E + P_E
+        P_E = Ve
+        Total_E[Int(2+(t+t_total)/dt)] = K_E + P_E
         #println("chi = ", chi_rand, " g_12 = ", gi_12, " g_21 = ", gf_21)
+
         if chi_rand < max(gi_12, gf_21)
 
-            if T_E[Int(2+(t+t_total)/dt)] > V_change
-                v_new2 = sign(v_new)*sqrt(v_new^2+2*(V-V_change)/m)
+            if Total_E[Int(2+(t+t_total)/dt)] > V_change
+                v_new2 = sqrt(v_new^2+2*(Ve-V_change)/m)
 
                 if PESi
                     println(PESi," SWAP ", gi_12)
                     PESi = false
-                    xf, vf = classical_propagation(F_f, m, x_new, 10.,v_new2)
+                    dx  = x2_new - R_f0
+                    x, v = classical_propagation(F_f, m, dx, R_i0, R_f0, v_new2*sign(gi_12))
                     t_total += t
                     t = dt
                     gi_12 = 0
                 else
                     println(PESi," SWAP ", gf_21)
                     PESi = true
-                    xi, vi = classical_propagation(F_i, m, x_new, 5,v_new2)
+                    dx  = x1_new - R_i0
+                    x, v = classical_propagation(F_i, m, dx, R_i0, R_f0, v_new2*sign(gf_21))
                     t_total += t
                     t = dt
                     gf_21 = 0
@@ -268,7 +284,9 @@ function surface_hopping(T, dt, F_i, F_f, m, x_0, n_a_p_i, n_a_p_f, J_if)
 
         p1 = plot(r -> n_a_p_i(r),0,20)
         p1 = plot!(r -> n_a_p_f(r),0,20)
-        p1 = scatter!([x_new],[V], markershape = :circle, color = :black)
+        p1 = scatter!([x1_new],[V1], markershape = :circle, color = :black)
+        p1 = scatter!([x2_new],[V2], markershape = :circle, color = :black)
+        p1 = scatter!([xe],[Ve], markershape = :circle, color = :cyan, markersize = :3)
         gui()
     end
 
