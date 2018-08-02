@@ -39,13 +39,15 @@ end
 Function to calculate the force field from the potential energy curves, V.
 using the relation F = m*a = -∇V
 """
-function force_from_V(a_p_p,a_p_m)
+function force_from_V(a_p_p,a_p_m, plot::Bool = true)
     F_p(x) = -derivative(R -> a_p_p(R),x)
     F_m(x) = -derivative(R -> a_p_m(R),x)
 
-    plot(x->F_p(x), 0, 20, label = "F_p")
-    plot!(x->F_m(x), 0, 20, label = "F_m")
-    gui()
+    if plot
+        plot(x->F_p(x), 0, 20, label = "F_p")
+        plot!(x->F_m(x), 0, 20, label = "F_m")
+        gui()
+    end
     return F_p, F_m
 end
 
@@ -72,36 +74,48 @@ end
 Function to trace motion of atom
 x_0 = initial displacement from equilibrium bond length.
 """
-function plot_trajectory(dx::Float64, v_0::Float64, R_i0, R_f0, F_i, m, dt,T, n_a_p_i, n_a_p_f)
+function plot_trajectory(dx::Float64, v_0::Float64, R_i0, e_i0, R_f0, e_f0, J_if, m, dt,T)
     trace = zeros(T)
     f = zeros(T)
     kinetic_energy = zeros(T)
     potential_energy = zeros(T)
     x_i0 = R_i0 - dx; x_f0 = R_f0 + dx; x_eq = R_f0 - R_i0
+    n_a_p_i(R) = non_adiabatic_potential(R, R_i0, e_i0)
+    n_a_p_f(R) = non_adiabatic_potential(R, R_f0, e_f0)
+    # a_p_p(R) = adiabatic_potential(R, R_i0, e_i0, R_f0, e_f0, J_if)[1]
+    # a_p_m(R) = adiabatic_potential(R, R_i0, e_i0, R_f0, e_f0, J_if)[2]
+    F_i, F_f = force_from_V(n_a_p_i, n_a_p_f, false)
+    # F_m, F_p = force_from_V(a_p_m, a_p_p, false)
     x, v = classical_propagation(F_i, m, x_i0, R_i0, R_f0, v_0)
     xs = zeros(T)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
     f_xmin = f_xmax = F_i(x_i0)
     p1 = plot(r -> n_a_p_i(r),0,20)
+    # p1 = plot!(r -> a_p_p(r),0,20, color = :red)
+    # p1 = plot!(r -> a_p_m(r),0,20, color = :red)
     for i in 1:T
         t = i*dt
         xs[i] = real(x(t))
-        x1_new = R_i0-real(x(t)-x_eq)/2
+        x1_new = R_i0 - real(x(t)-x_eq)/2
         x2_new = R_f0 + real(x(t)-x_eq)/2
         v_new = real(v(t))
         V1 = n_a_p_i(x1_new)
         V2 = n_a_p_f(x2_new)
+        a_p_p(R) = adiabatic_potential(R, x1_new, V1, x2_new, V2, J_if)[1]
+        a_p_m(R) = adiabatic_potential(R, x1_new, V1, x2_new, V2, J_if)[2]
         kinetic_energy[i] = 0.5*m*v_new^2
         potential_energy[i] = V2+V1
-        p1 = plot(r -> n_a_p_i(r),0,20)
-        p1 = plot!(r -> n_a_p_f(r),0,20)
+        p1 = plot(r -> n_a_p_i(r),0,20, color = :blue)
+        p1 = plot!(r -> n_a_p_f(r),0,20, color = :blue)
+        p1 = plot!(r -> a_p_p(r),0,20, color = :red)
+        p1 = plot!(r -> a_p_m(r),0,20, color = :red)
         p1 = scatter!([x1_new],[V1], markershape = :circle, color = :black)
         p1 = scatter!([x2_new],[V2], markershape = :circle, color = :black)
         gui()
     end
 
     p2 = plot(xs, [f, kinetic_energy, potential_energy])
-    plot(p1,p2,layout = (2,1))
+    plot(p1,p2,layout = (2))
     gui()
     #println("min x = ",xmin, "F = ", f_xmin, "max x = ", xmax, "F = ", f_xmax )
     return f, kinetic_energy, potential_energy
@@ -167,16 +181,22 @@ end
 
 """
 Function to calculate non-adiabatic coupling vector
+using ADIABATIC states.
 """
-function NACV(R_1, R_2, dR, dt)
-    Phis(R) = non_adiabatic_states(R,[R_1,R_2])
-    Phi_1(R) = Phis(R)[1]
-    Phi_2(R) = Phis(R)[2]
+function NACV(R_e, n_a_p_i, n_a_p_f, J_if, R_1, R_2, dR, dt)
+    Psis = adiabatic_states(R_e, n_a_p_i, n_a_p_f, J_if)
+    Phis(R) = non_adiabatic_states(R, [R_1, R_2])
+    Psi_1(R) = Psis[:,1][1]*Phis(R)[1] + Psis[:,1][2]*Phis(R)[2]
+    Psi_2(R) = Psis[:,2][1]*Phis(R)[1] + Psis[:,2][2]*Phis(R)[2]
     #grad_phi_1(R) = derivative(r->Phi_1(r),R)
-    grad_phi_2(R) = derivative(r->Phi_2(r),R)
-    overlap(R) = dot(conj(Phi_1(R)),grad_phi_2(R))*(dR)/dt #fix the time derivative of R.
+    grad_psi_2(R) = derivative(r->Psi_2(r),R)
+    overlap(R) = dot(conj(Psi_1(R)),grad_psi_2(R))*(dR)/dt #fix the time derivative of R.
     d_jk = (quadgk(overlap, 0, 20))[1]
+    plot(r->Psi_1(r), 0, 20)
+    plot!(r->Psi_2(r), 0, 20)
+    gui()
     return d_jk
+
 end
 
 """
@@ -215,6 +235,7 @@ function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J
     p1 = plot!(r -> n_a_p_f(r),0,20)
     t = 0; t_total = 0; gf_21 = 0; g1_12 = 0;
     x, v = classical_propagation(F_i, m, x1_new, R_i0, R_f0, 0.)
+
 
     while t+t_total<(T-2)
         xs[Int(2+(t+t_total)/dt)] = real(x(t))
