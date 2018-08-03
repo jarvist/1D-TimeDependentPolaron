@@ -140,7 +140,6 @@ function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt
     # x, v = classical_propagation(F_i, m, R_0+dx, R_0, v_0, )
     xs = zeros(T)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
-    f_xmin = f_xmax = F_i(x_i0)
     p1 = plot(r -> n_a_p_i(r),-10,10)
     # p1 = plot!(r -> a_p_p(r),0,20, color = :red)
     # p1 = plot!(r -> a_p_m(r),0,20, color = :red)
@@ -251,17 +250,11 @@ end
 Function to calculate non-adiabatic coupling vector
 using ADIABATIC states.
 """
-function NACV(R_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt, )
-    H_diabatic = [n_a_p_i(R_e) J_if; J_if n_a_p_f(R_e)]
-    #H_adiabatic = [a_p_m(R_e) 0; 0 a_p_p(R_e)p3 = ]
-    c_11, c_12, c_21, c_22 = eigvecs(H_diabatic)
-    phis(R) = non_adiabatic_states(R, [R_n1, R_n2])
-    psi_1(R) = c_11*phis(R)[1] + c_12*phis(R)[2]
-    psi_2(R) = c_21*phis(R)[1] + c_22*phis(R)[2]
-    #grad_phi_1(R) = derivative(r->Phi_1(r),R)
+function NACV(psi_1, psi_2, dR, dt)
+    #grad_psi_1(R) = derivative(r->psi_1(r),R)
     grad_psi_2(R) = derivative(r->psi_2(r),R)
-    overlap(R) = dot(conj(psi_1(R)),grad_psi_2(R))*(dR)/dt #fix the time derivative of R.
-    d_jk = (quadgk(overlap, 0, 20))[1]
+    overlap(R) = dot(conj(psi_1(R)),grad_psi_2(R))*(dR/dt) #fix the time derivative of R.
+    d_jk = riemann(psi_1, real(-10), real(10),1000,"simpsons")
 
     return d_jk
 
@@ -272,10 +265,10 @@ Function to generate the full electronic wavefunction as a linear combination of
 adiabatic_states by propagating the initial coeffients forwards in time (solving
 the TDSE)
 """
-function wavefunction_coefficients(a_i1,a_i2, a_p, x_e,n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt)
-    a_f1 = dt*(a_i1*(1 - im*a_p(x_e)) - a_i2*NACV(x_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt))
-    a_f2 = dt*(a_i2*(1 - im*a_p(x_e)) - a_i1*NACV(x_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt))
-
+function wavefunction_coefficients(a_i1,a_i2, a_p, R_e,n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt)
+    a_f1 = a_i1 - dt*(im*a_p(R_e) - a_i2*NACV(R_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt))
+    a_f2 = a_i2 - dt*(im*a_p(R_e) - a_i1*NACV(R_e, n_a_p_f, n_a_p_i, J_if, R_n2, R_n1, dR, dt))
+    return real(a_f1), real(a_f2)
 end
 
 """
@@ -289,7 +282,8 @@ are (0,1) and (1,0)
 
 electron located at R_e; between 2 nuclei at R_n1 and R_n2
 """
-function electronic_wavefunction(R_e, R_n1, R_n2, n_a_p_i, n_a_p_f, a_1, a_2, J_if)
+function electronic_wavefunction(site, R_n, n_a_p_i, n_a_p_f, a_1, a_2, J_if, plotting::Bool=true)
+    R_e = site*R_n; R_n1 = -R_n; R_n2 = R_n
     H_diabatic = [n_a_p_i(R_e) J_if; J_if n_a_p_f(R_e)]
     #H_adiabatic = [a_p_m(R_e) 0; 0 a_p_p(R_e)p3 = ]
     c_11, c_12, c_21, c_22 = eigvecs(H_diabatic)
@@ -297,18 +291,20 @@ function electronic_wavefunction(R_e, R_n1, R_n2, n_a_p_i, n_a_p_f, a_1, a_2, J_
     psi_1(R) = c_11*phis(R)[1] + c_12*phis(R)[2]
     psi_2(R) = c_21*phis(R)[1] + c_22*phis(R)[2]
     Psi(R) = a_1*psi_1(R) + a_2*psi_2(R)
-    plot(r-> Psi(r), -10, 10)
-    return Psi
+    if plotting
+        plot(r-> Psi(r), -10, 10)
+    else
+        return Psi, psi_1, psi_2, c_11, c_12, c_21, c_22
+    end
 end
 
 """
 Function to calculate switching probabilities
 Just considering state on V_11 to start.
 """
-function g_12(R_1, R_2, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
-    d_12 = NACV(R_1, R_2, dR, dt)
-    psi = adiabatic_states(R_2, n_a_p_i, n_a_p_f, J_if)[:,APES]
-    g_12 = 2*real(conj(psi[2])*psi[1]*dR*d_12)*dt/(psi[1]*conj(psi[1]))
+function g_12(n_a_p_i, n_a_p_f, R_n, J_if, dR, dt, a1, a2)
+    d_12 = NACV(-1, n_a_p_i, n_a_p_f, R_n, J_if, dR, dt)
+    g_12 = 2*real(conj(a2)*a1*dR*d_12)*dt/(a1*conj(a1))
     return g_12
 end
 
@@ -317,18 +313,22 @@ end
 Function to calculate switching probabilities
 Just considering state on V_22 to start.
 """
-function g_21(R_2, R_1, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
-    d_21 = NACV(R_2, R_1, dR, dt)
-    psi = adiabatic_states(R_1, n_a_p_i, n_a_p_f, J_if)[:,APES]
-    g_21 = 2*real(conj(psi[1])*psi[2]*dR*d_21)*dt/(psi[2]*conj(psi[2]))
+function g_21(n_a_p_i, n_a_p_f, R_n, J_if, dR, dt, a1, a2)
+    d_21 =  NACV(1, n_a_p_i, n_a_p_f, R_n, J_if, dR, dt)
+    g_21 = 2*real(conj(a1)*a2*dR*d_21)*dt/(a2*conj(a2))
     return g_21
 end
 
+# function test_wf_propagation()
+#     plot_trajectory()
+# end
 """
+site = +/- 1 for nuclei on right or left
 """
 function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J_if)
 
-    PESi = true
+    PESm = true
+    site = -1
 
     Total_E = zeros(T+2)
     xs = zeros(T+1)
@@ -340,32 +340,21 @@ function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J
     electronic_wavefunction = a_12
 
     while t+t_total<(T-2)
-        xs[Int(2+(t+t_total)/dt)] = real(x(t))
-        x1_new = R_i0-real(x(t)-x_eq)/2
-        x2_new = R_f0 + real(x(t)-x_eq)/2
-        v_new = real(v(t))
-        V1 = n_a_p_i(x1_new)
-        V2 = n_a_p_f(x2_new)
-        dR = (xs[Int(2+(t+t_total)/dt)] - xs[Int(1+(t+t_total)/dt)])/2
-        if PESi
-            xe = x1_new; Ve = V1
-            V_change = n_a_p_f(x2_new)
-            if V_change>V1
-                APES = 1
-            else
-                APES = 2
-            end
-            gi_12 = g_12(x2_new, xe, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
+        x,v = classical_propagation(F_m, m, real(x), R_0, real(v), dt, slope_m)
+        xs[Int(2+(t+t_total)/dt)] = real(x)
+        xn_new = real(x)/2
+
+        v_new = real(v)
+        V1 = a_p_m(site*xn_new)
+        V2 = a_p_p(site*xn_new)
+        dR = (xs[Int(2+(t+t_total)/dt)] - xs[Int(1+(t+t_total)/dt)])
+        if PESm
+            Ve = V1; V_change = V2 - V1
+            gi_12 = g_12(x2_new, xe, dR, dt, n_a_p_i, n_a_p_f, J_if)
             #println(x_new)
         else
-            xe = x2_new; Ve = V2
-            V_change = n_a_p_f(x2_new)
-            if V_change>V2
-                APES = 1
-            else
-                APES = 2
-            end
-            gf_21 = g_21(x1_new, xe, dR, dt, n_a_p_i, n_a_p_f, J_if,APES)
+            Ve = V2; V_change = V1 - V2
+            gf_21 = g_21(x1_new, xe, dR, dt, n_a_p_i, n_a_p_f, J_if)
             #println(x_new)
         end
         t+=dt
@@ -385,17 +374,17 @@ function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J
             if Total_E[Int(2+(t+t_total)/dt)] > V_change
                 v_new2 = sqrt(v_new^2+2*(Ve-V_change)/m)
 
-                if PESi
-                    println(PESi," SWAP ", gi_12)
-                    PESi = false
+                if PESm
+                    println(PESm," SWAP ", gi_12)
+                    PESm = false
                     dx  = x2_new - R_f0
                     x, v = classical_propagation(F_f, m, dx, R_i0, R_f0, v_new2*sign(gi_12))
                     t_total += t
                     t = dt
                     gi_12 = 0
                 else
-                    println(PESi," SWAP ", gf_21)
-                    PESi = true
+                    println(PESm," SWAP ", gf_21)
+                    PESm = true
                     dx  = x1_new - R_i0
                     x, v = classical_propagation(F_i, m, dx, R_i0, R_f0, v_new2*sign(gf_21))
                     t_total += t
@@ -413,4 +402,24 @@ function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J
         gui()
     end
 
+end
+
+
+"""
+Numeric integration, taken from http://mth229.github.io/integration.html
+"""
+function riemann(f::Function, a::Real, b::Real, n::Int; method="right")
+  if method == "right"
+     meth(f,l,r) = f(r) * (r-l)
+  elseif method == "left"
+     meth(f,l,r) = f(l) * (r-l)
+  elseif method == "trapezoid"
+     meth(f,l,r) = (1/2) * (f(l) + f(r)) * (r-l)
+  elseif method == "simpsons"
+     meth(f,l,r) = (1/6) * (f(l) + 4*(f((l+r)/2)) + f(r)) * (r-l)
+  end
+
+  xs = a + (0:n) * (b-a)/n
+  as = [meth(f, l, r) for (l,r) in zip(xs[1:end-1], xs[2:end])]
+  sum(as)
 end
