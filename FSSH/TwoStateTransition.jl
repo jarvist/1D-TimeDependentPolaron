@@ -194,28 +194,42 @@ Find eigenvectors (adiabatic states) from the eigenstates.
 Plot eigenstate as a function of nuclear coordinates.
     (Figures show excited state )
 """
-function plot_states(R_0, e_i0, e_f0, J_if)
+function plot_states(R_0, dR, e_i0, e_f0, J_if)
     plot()
+    x = R_0+dR
+    R_n1 = R_e = x/2
+    R_n2 = -x/2
     n_a_p_i(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[1]
     n_a_p_f(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[2]
-    a_p_p(R) = adiabatic_potential(R, R_i0, e_i0, R_f0, e_f0, J_if)[1]
-    a_p_m(R) = adiabatic_potential(R, R_i0, e_i0, R_f0, e_f0, J_if)[2]
-    Psis(R) = adiabatic_states(R, a_p_m, a_p_p)
-    Psi_1(R) = Psis(R)[:,1]
-    Psi_2(R) = Psis(R)[:,2]
+    a_p_p(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[1]
+    a_p_m(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[2]
+    H_diabatic = [n_a_p_i(R_e) J_if; J_if n_a_p_f(R_e)]
+    #H_adiabatic = [a_p_m(R_e) 0; 0 a_p_p(R_e)p3 = ]
+    c_11, c_12, c_21, c_22 = eigvecs(H_diabatic)
+    phis(R) = non_adiabatic_states(R, [R_n1, R_n2])
+    psi_1(R) = c_11*phis(R)[1] + c_12*phis(R)[2]
+    psi_2(R) = c_21*phis(R)[1] + c_22*phis(R)[2]
+    # Psis(R) = adiabatic_states(R, a_p_m, a_p_p)
+    # Phis(R) = non_adiabatic_states(R, [-x/2,x/2])
+    # psi_1(R) = Psis(R)[:,1][1]*Phis(R)[1] + Psis(R)[:,1][2]*Phis(R)[2]
+    # psi_2(R) = Psis(R)[:,2][1]*Phis(R)[1] + Psis(R)[:,2][2]*Phis(R)[2]
     g_s_1 = zeros(201); g_s_2 = zeros(201); e_s_1 = zeros(201); e_s_2 = zeros(201); x = zeros(201);
-    for i in 0:0.1:20
-        g_s_1[Int(i*10+1)] = Psi_1(i)[1]
-        g_s_2[Int(i*10+1)] = Psi_1(i)[2]
-        e_s_1[Int(i*10+1)] = Psi_2(i)[1]
-        e_s_2[Int(i*10+1)] = Psi_2(i)[2]
-        x[Int(i*10+1)] = i
-    end
-    scatter(x, g_s_1, markershape = :square, color = :blue, label = "ground_site_1")
-    scatter!(x, g_s_2, markershape = :square, color = :red, label = "ground_site_2")
-    scatter!(x, e_s_1, markershape = :diamond, color = :green, label = "excited_site_1")
-    scatter!(x, e_s_2, markershape = :diamond, color = :yellow, label = "excited_site_2")
+    # for i in 0:0.1:20
+    #     g_s_1[Int(i*10+1)] = psi_1(i)[1]
+    #     g_s_2[Int(i*10+1)] = psi_1(i)[2]
+    #     e_s_1[Int(i*10+1)] = psi_2(i)[1]
+    #     e_s_2[Int(i*10+1)] = psi_2(i)[2]
+    #     x[Int(i*10+1)] = i
+    # end
+    # scatter(x, g_s_1, markershape = :square, color = :blue, label = "ground_site_1")
+    # scatter!(x, g_s_2, markershape = :square, color = :red, label = "ground_site_2")
+    # scatter!(x, e_s_1, markershape = :diamond, color = :green, label = "excited_site_1")
+    # scatter!(x, e_s_2, markershape = :diamond, color = :yellow, label = "excited_site_2")
+    # gui()
+    plot(r->psi_1(r), -10, 10)
+    plot!(r->psi_2(r), -10, 10)
     gui()
+
 end
 
 """
@@ -237,7 +251,7 @@ end
 Function to calculate non-adiabatic coupling vector
 using ADIABATIC states.
 """
-function NACV(R_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt)
+function NACV(R_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt, )
     H_diabatic = [n_a_p_i(R_e) J_if; J_if n_a_p_f(R_e)]
     #H_adiabatic = [a_p_m(R_e) 0; 0 a_p_p(R_e)p3 = ]
     c_11, c_12, c_21, c_22 = eigvecs(H_diabatic)
@@ -248,9 +262,7 @@ function NACV(R_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt)
     grad_psi_2(R) = derivative(r->psi_2(r),R)
     overlap(R) = dot(conj(psi_1(R)),grad_psi_2(R))*(dR)/dt #fix the time derivative of R.
     d_jk = (quadgk(overlap, 0, 20))[1]
-    plot(r->psi_1(r), -10, 10)
-    plot!(r->psi_2(r), -10, 10)
-    gui()
+
     return d_jk
 
 end
