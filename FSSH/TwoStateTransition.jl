@@ -5,7 +5,6 @@ using Calculus
 using Plots
 gr()
 
-const hbar = 1
 
 """
 Function to define the non-adiabatic potential for a single site centered on R_0
@@ -63,21 +62,29 @@ function adiabatic_force(R)
 end
 
 """
+Function to calculate the second derivative of the potential (i.e the slope of the
+force) at every point in space to be used to determine a classical propagation.
+"""
+function slope(F_m)
+    slope_m(x) = derivative(R -> F_m(R),x)
+end
+
+"""
 Function to classically propagate nuclei along lower potential energy surface
 initial_position = x_0
 initial_velocity = v_0
 acceleration = F_m(initial_position)/mass
 time_step = dt
 """
-function classical_propagation(F_m, m, x_0, R_0, v_0)
+function classical_propagation(F_m, m, x_0, R_0, v_0, dt, slope_m)
     x_eq = R_0
-    slope = (F_m(x_0/2) - F_m(x_0/2+2))/2.0
-    omega = sqrt(slope/m)
+    # s = (F_m(x_0/2) - F_m(x_0/2+1))/1.0
+    omega = sign(slope_m(x_0/2))sqrt(abs(slope_m(x_0/2)/m))
     phase = atan(v_0/(omega*(x_0-x_eq)))/omega
     #println(phase, "     ", (x_0-x_eq)/(2*cos(omega*phase)), "    ", (v_0)/(2*omega*sin(omega*phase)))
     A = (x_0-x_eq)/(2*cos(omega*phase))
-    x(t) = x_eq + A*(exp(-im*omega*(t-phase)) + exp(im*omega*(t-phase)))
-    v(t) = omega*im*A*(-exp(-im*omega*(t-phase)) + exp(im*omega*(t-phase)))
+    x = x_eq + A*(exp(-im*omega*(dt-phase)) + exp(im*omega*(dt-phase)))
+    v = omega*im*A*(-exp(-im*omega*(dt-phase)) + exp(im*omega*(dt-phase)))
     return x, v
 end
 
@@ -90,14 +97,15 @@ function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt
     f = zeros(T)
     kinetic_energy = zeros(T)
     potential_energy = zeros(T)
-    x_i0 = -R_0/2 - dx; x_f0 = R_0/2 + dx; x_eq = R_0
+    x_i0 = -R_0/2 - dx; x_f0 = R_0/2 + dx; x_eq = R_0; x = R_0 + 2*dx; v = v_0;
     n_a_p_i(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[1]
     n_a_p_f(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[2]
-    # a_p_p(R) = adiabatic_potential(R, R_i0, e_i0, R_f0, e_f0, J_if)[1]
-    # a_p_m(R) = adiabatic_potential(R, R_i0, e_i0, R_f0, e_f0, J_if)[2]
+    a_p_m(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[1]
+    a_p_p(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[2]
     F_i, F_f = force_from_V(n_a_p_i, n_a_p_f, false)
-    # F_m, F_p = force_from_V(a_p_m, a_p_p, false)
-    x, v = classical_propagation(F_i, m, R_0+dx, R_0, v_0)
+    F_m, F_p = force_from_V(a_p_m, a_p_p, false)
+    slope_m = slope(F_m)
+    # x, v = classical_propagation(F_i, m, R_0+dx, R_0, v_0, )
     xs = zeros(T)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
     f_xmin = f_xmax = F_i(x_i0)
@@ -105,28 +113,30 @@ function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt
     # p1 = plot!(r -> a_p_p(r),0,20, color = :red)
     # p1 = plot!(r -> a_p_m(r),0,20, color = :red)
     for i in 1:T
-        t = i*dt
-        xs[i] = real(x(t))
-        x1_new = -real(x(t))/2
-        x2_new = + real(x(t))/2
-        v_new = real(v(t))
-        V1 = n_a_p_i(x1_new)
-        V2 = n_a_p_f(x2_new)
-        a_p_p(R) = adiabatic_potential(R, xs[i], V1, V2, J_if)[1]
-        a_p_m(R) = adiabatic_potential(R, xs[i], V1, V2, J_if)[2]
+        trace[i] = i*dt
+        x,v = classical_propagation(F_m, m, real(x), R_0, real(v), dt, slope_m)
+        xs[i] = real(x)
+        x1_new = -real(x)/2
+        x2_new = + real(x)/2
+        v_new = real(v)
+        V1 = a_p_m(x1_new)
+        V2 = a_p_m(x2_new)
+        # a_p_p(R) = adiabatic_potential(R, xs[i], V1, V2, J_if)[1]
+        # a_p_m(R) = adiabatic_potential(R, xs[i], V1, V2, J_if)[2]
         kinetic_energy[i] = 0.5*m*v_new^2
         potential_energy[i] = V2+V1
         p1 = plot(r -> n_a_p_i(r),-10,10, color = :blue)
         p1 = plot!(r -> n_a_p_f(r),-10,10, color = :blue)
         p1 = plot!(r -> a_p_p(r),-10,10, color = :red)
         p1 = plot!(r -> a_p_m(r),-10,10, color = :red)
-        p1 = scatter!([x1_new],[V1], markershape = :circle, color = :black)
+        p1 = scatter!([x1_new],[V1], markershape = :circle, color = :blue)
         p1 = scatter!([x2_new],[V2], markershape = :circle, color = :black)
         gui()
     end
 
     p2 = plot(xs, [f, kinetic_energy, potential_energy])
-    plot(p1,p2,layout = (2))
+    p3 = plot(trace, xs)
+    plot(p1,p2,p3,layout = (1,3))
     gui()
     #println("min x = ",xmin, "F = ", f_xmin, "max x = ", xmax, "F = ", f_xmax )
     return f, kinetic_energy, potential_energy
