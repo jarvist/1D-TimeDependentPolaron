@@ -41,7 +41,7 @@ end
 Function to calculate the force field from the potential energy curves, V.
 using the relation F = m*a = -∇V
 """
-function force_from_V(a_p_p, a_p_m, plotting::Bool=true)
+function force_from_V(a_p_m, a_p_p, plotting::Bool=true)
     F_p(x) = -derivative(R -> a_p_p(R),x)
     F_m(x) = -derivative(R -> a_p_m(R),x)
 
@@ -50,7 +50,7 @@ function force_from_V(a_p_p, a_p_m, plotting::Bool=true)
         plot!(x->F_m(x), -10, 10, label = "F_m")
         gui()
     end
-    return F_p, F_m
+    return F_m, F_p
 end
 
 """
@@ -76,7 +76,7 @@ initial_velocity = v_0
 acceleration = F_m(initial_position)/mass
 time_step = dt
 """
-function classical_propagation(F_m, m, x_0, R_0, v_0, dt, slope_m)
+function classical_propagation(F_m, m, x_0, R_0, v_0, dt, slope_m, plotting::Bool=false)
     x_eq = R_0
     # s = (F_m(x_0/2) - F_m(x_0/2+1))/1.0
     omega = sign(slope_m(x_0/2))sqrt(abs(slope_m(x_0/2)/m))
@@ -85,7 +85,39 @@ function classical_propagation(F_m, m, x_0, R_0, v_0, dt, slope_m)
     A = (x_0-x_eq)/(2*cos(omega*phase))
     x = x_eq + A*(exp(-im*omega*(dt-phase)) + exp(im*omega*(dt-phase)))
     v = omega*im*A*(-exp(-im*omega*(dt-phase)) + exp(im*omega*(dt-phase)))
-    return x, v
+
+    if plotting
+        xs = zeros(700)
+        vs = zeros(700)
+        ts = zeros(700)
+        V = zeros(700)
+        x = x_0
+        v = v_0
+
+        for i in 1:700
+
+            dt = 0.5
+            t = i*0.5
+            xs[i] = x
+            vs[i] = v
+            V[i] = apm(x/2)
+            omega = sign(slope_m(x/2))sqrt(abs(slope_m(x/2)/m))
+            phase = atan(v/(omega*(x-x_eq)))/omega
+            A = (x-x_eq)/(2*cos(omega*phase))
+            if x<0.01
+                x=0
+                v=0
+            else
+                x = real(x_eq + A*(exp(-im*omega*(dt-phase)) + exp(im*omega*(dt-phase))))
+                v = real(omega*im*A*(-exp(-im*omega*(dt-phase)) + exp(im*omega*(dt-phase))))
+            end
+            ts[i] = t
+        end
+        plot!(ts, [xs,vs,V])
+    else
+        return x,v
+    end
+
 end
 
 """
