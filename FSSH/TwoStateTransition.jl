@@ -6,22 +6,36 @@ using Plots
 using OrdinaryDiffEq
 gr()
 
+# Force constant from Wang = 14500 amu/ps^2 = 14500 * 1.66e-27(kg) / 10^(-24)(s^2) = 24.07
+# equilibrium bond length for hydrogen = 7.5e-11m
+# energy = 4.5 eV = 7.2e-19
+# coupling constant = 3500 cm−1/Å = 3500 *100*10^10 = 3500 e-8 = 3.5 e-5
+
+
+#
+# ---------------
+# constants used 04/08/18:
+# J_if = 0.136056925,
+# en = 122.4512325 (but plotted with en = 0)
+# R_0 = 1.4423076923076923
+# K = 1.3204114285714283
+# ----------------
 
 """
 Function to define the non-adiabatic potential for a single site centered on R_0
 Basic quadratic approximation is used with minimum energy e_0
 """
-function non_adiabatic_potential(R, R_0, e_i0, e_f0)
-    n_a_p_i = (R+R_0/2)^2 + e_i0
-    n_a_p_f = (R-R_0/2)^2 + e_f0
+function non_adiabatic_potential(K, R, R_0, e_i0, e_f0)
+    n_a_p_i = K*(R+R_0/2)^2 + e_i0
+    n_a_p_f = K*(R-R_0/2)^2 + e_f0
     return n_a_p_i, n_a_p_f
 end
 
 """
 Function to define the adiabatic potentials from the non_adiabatic_potentials
 """
-function adiabatic_potential(R, R_0, e_i0, e_f0, J_if)
-    n_a_p_i, n_a_p_f = non_adiabatic_potential(R, R_0, e_i0, e_f0)
+function adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)
+    n_a_p_i, n_a_p_f = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)
     a_p_m = 0.5*(n_a_p_i+n_a_p_f) - 0.5*sqrt((n_a_p_i-n_a_p_f)^2+4*J_if^2)
     a_p_p = 0.5*(n_a_p_i+n_a_p_f) + 0.5*sqrt((n_a_p_i-n_a_p_f)^2+4*J_if^2)
     return a_p_m, a_p_p
@@ -30,11 +44,11 @@ end
 """
 Function to plot diabatic and adiabatic potentials for simple 2-atom system.
 """
-function plot_potentials(R_0, e_i0, e_f0, J_if)
-    plot(r -> non_adiabatic_potential(r, R_0, e_i0, e_f0)[1], 0, 20, color = :red, label = "e_i")
-    plot!(r -> non_adiabatic_potential(r, R_0, e_i0, e_f0)[2], 0, 20, color = :red, label = "e_f")
-    plot!(r -> adiabatic_potential(r,R_0, e_i0, e_f0, J_if)[1], 0, 20, color = :blue, label = "e_+")
-    plot!(r -> adiabatic_potential(r,R_0, e_i0, e_f0, J_if)[2], 0, 20, color = :blue, label = "e_-")
+function plot_potentials(K, R_0, e_i0, e_f0, J_if)
+    plot(r -> non_adiabatic_potential(K, r, R_0, e_i0, e_f0)[1], -R_0, R_0, color = :red, label = "e_i")
+    plot!(r -> non_adiabatic_potential(K, r, R_0, e_i0, e_f0)[2], -R_0, R_0, color = :red, label = "e_f")
+    plot!(r -> adiabatic_potential(K, r,R_0, e_i0, e_f0, J_if)[1], -R_0, R_0, color = :blue, label = "e_+")
+    plot!(r -> adiabatic_potential(K, r,R_0, e_i0, e_f0, J_if)[2], -R_0, R_0, color = :blue, label = "e_-")
     gui()
 end
 
@@ -47,20 +61,13 @@ function force_from_V(a_p_m, a_p_p, plotting::Bool=true)
     F_m(x) = -derivative(R -> a_p_m(R),x)
 
     if plotting
-        plot(x->F_p(x), -10, 10, label = "F_p")
-        plot!(x->F_m(x), -10, 10, label = "F_m")
+        plot(x->F_p(x), -R_0, R_0, label = "F_p")
+        plot!(x->F_m(x), -R_0, R_0, label = "F_m")
         gui()
     end
     return F_m, F_p
 end
 
-"""
-Analytic solution to adiabatic force
-"""
-function adiabatic_force(R)
-    f = -2*R - (R0*(R0*R+de/2))/(sqrt((R*R0 + de/2)^2 + 4*jif^2))
-    return f
-end
 
 """
 Function to calculate the second derivative of the potential (i.e the slope of the
@@ -80,6 +87,9 @@ function Acceleration(du,u,p,t)
    du[2] = F(x)/M
 end
 
+"""
+choice of T and dt are important.
+"""
 function classical_propagation_2(x_0, v_0,T::Float64, dt)
     tspan = (0.0,T)
     EoM = ODEProblem(Acceleration,[x_0,v_0],tspan)
@@ -145,20 +155,20 @@ end
 Function to trace motion of atom
 x_0 = initial displacement from equilibrium bond length.
 """
-function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt,T::Float64)
+function plot_trajectory(dx::Float64, v_0::Float64, K, R_0, e_i0, e_f0, J_if, m, dt,T::Float64)
     x_f0 = (R_0+dx)/2; x_i0 = -x_f0; x_eq = R_0; x = R_0 + dx;
-    n_a_p_i(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[1]
-    n_a_p_f(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[2]
-    a_p_m(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[1]
-    a_p_p(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[2]
+    n_a_p_i(R) = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)[1]
+    n_a_p_f(R) = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)[2]
+    a_p_m(R) = adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)[1]
+    a_p_p(R) = adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)[2]
     F_i, F_f = force_from_V(n_a_p_i, n_a_p_f, false)
     F_m, F_p = force_from_V(a_p_m, a_p_p, false)
     # slope_m = slope(F_m)
     # x, v = classical_propagation(F_i, m, R_0+dx, R_0, v_0, )
-    F(R) = -F_m(R/2); M = m
+    F(R) = F_m(R/2); M = m # These need to be set in the REPL
     x,v = classical_propagation_2(x,v_0,T,dt)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
-    p1 = plot(r -> n_a_p_i(r),-10,10)
+    p1 = plot(r -> n_a_p_i(r),-R_0,R_0)
     # p1 = plot!(r -> a_p_p(r),0,20, color = :red)
     # p1 = plot!(r -> a_p_m(r),0,20, color = :red)
     x1 = -x/2; x2 = x/2;
@@ -170,8 +180,8 @@ function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt
     TE = KE + PE
     t = range(0.,dt,length(x))
     for i in 1:length(x)
-        if i%1000==0
-            p1 = plot(r->a_p_m(r),-10,10)
+        if i%100==0
+            p1 = plot(r->a_p_m(r),-R_0,R_0)
             p1 = scatter!([x1[Int(i)]],[V1[Int(i)]],color = :black, markershape = :circle)
             gui()
         end
@@ -205,15 +215,15 @@ Find eigenvectors (adiabatic states) from the eigenstates.
 Plot eigenstate as a function of nuclear coordinates.
     (Figures show excited state )
 """
-function plot_states(R_0, dR, e_i0, e_f0, J_if)
+function plot_states(K, R_0, dR, e_i0, e_f0, J_if)
     plot()
     x = R_0+dR
     R_n1 = R_e = x/2
     R_n2 = -x/2
-    n_a_p_i(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[1]
-    n_a_p_f(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[2]
-    a_p_p(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[1]
-    a_p_m(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[2]
+    n_a_p_i(R) = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)[1]
+    n_a_p_f(R) = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)[2]
+    a_p_p(R) = adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)[1]
+    a_p_m(R) = adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)[2]
     H_diabatic = [n_a_p_i(R_e) J_if; J_if n_a_p_f(R_e)]
     #H_adiabatic = [a_p_m(R_e) 0; 0 a_p_p(R_e)p3 = ]
     c_11, c_12, c_21, c_22 = eigvecs(H_diabatic)
@@ -262,11 +272,11 @@ end
 Function to calculate non-adiabatic coupling vector
 using ADIABATIC states.
 """
-function NACV(psi_1, psi_2, dR, dt)
+function NACV(psi_1, psi_2)
     #grad_psi_1(R) = derivative(r->psi_1(r),R)
     grad_psi_2(R) = derivative(r->psi_2(r),R)
-    overlap(R) = dot(conj(psi_1(R)),grad_psi_2(R))*(dR/dt) #fix the time derivative of R.
-    d_jk = riemann(psi_1, real(-10), real(10),1000,"simpsons")
+    overlap(R) = dot(conj(psi_1(R)),grad_psi_2(R)) #fix the time derivative of R.
+    d_jk = (quadgk(psi_1, real(-10), real(10)))[1]
 
     return d_jk
 
@@ -277,10 +287,10 @@ Function to generate the full electronic wavefunction as a linear combination of
 adiabatic_states by propagating the initial coeffients forwards in time (solving
 the TDSE)
 """
-function wavefunction_coefficients(a_i1,a_i2, a_p, R_e,n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt)
-    a_f1 = a_i1 - dt*(im*a_p(R_e) - a_i2*NACV(R_e, n_a_p_i, n_a_p_f, J_if, R_n1, R_n2, dR, dt))
-    a_f2 = a_i2 - dt*(im*a_p(R_e) - a_i1*NACV(R_e, n_a_p_f, n_a_p_i, J_if, R_n2, R_n1, dR, dt))
-    return real(a_f1), real(a_f2)
+function wavefunction_coefficients(a_i1, a_i2, a_p_m, a_p_p, R_e, dR, dt)
+    a_f1 = a_i1 - dt*im*a_p_m(R_e) - a_i2*NACV(psi_1, psi_2)*dR
+    a_f2 = a_i2 - dt*im*a_p_p(R_e) - a_i1*NACV(psi_2, psi_1)*dR
+    return a_f1, a_f2
 end
 
 """
@@ -314,8 +324,8 @@ end
 Function to calculate switching probabilities
 Just considering state on V_11 to start.
 """
-function g_12(n_a_p_i, n_a_p_f, R_n, J_if, dR, dt, a1, a2)
-    d_12 = NACV(-1, n_a_p_i, n_a_p_f, R_n, J_if, dR, dt)
+function g_12(dR, dt, a1, a2)
+    d_12 = NACV(psi_1, psi_2)
     g_12 = 2*real(conj(a2)*a1*dR*d_12)*dt/(a1*conj(a1))
     return g_12
 end
@@ -325,17 +335,29 @@ end
 Function to calculate switching probabilities
 Just considering state on V_22 to start.
 """
-function g_21(n_a_p_i, n_a_p_f, R_n, J_if, dR, dt, a1, a2)
-    d_21 =  NACV(1, n_a_p_i, n_a_p_f, R_n, J_if, dR, dt)
+function g_21(dR, dt, a1, a2)
+    d_21 =  NACV(psi_2,psi_1)
     g_21 = 2*real(conj(a1)*a2*dR*d_21)*dt/(a2*conj(a2))
     return g_21
 end
 
+
+
+"""
+set up system parameters
+plot initial state
+propagate nuclei classically by dt
+
+"""
+function surface_hopping_2(R_0,x_0,v_0)
+# Initialise System
+end
 # function test_wf_propagation()
 #     plot_trajectory()
 # end
 """
 site = +/- 1 for nuclei on right or left
+
 """
 function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J_if)
 
@@ -348,7 +370,7 @@ function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J
     p1 = plot(r -> n_a_p_i(r),0,20)
     p1 = plot!(r -> n_a_p_f(r),0,20)
     t = 0; t_total = 0; gf_21 = 0; g1_12 = 0;
-    x, v = classical_propagation(F_i, m, x1_new, R_i0, R_f0, 0.)
+    x, v = classical_propagation_2(dx, 0., 100., 0.001)
     electronic_wavefunction = a_12
 
     while t+t_total<(T-2)
