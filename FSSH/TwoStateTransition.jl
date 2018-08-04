@@ -3,6 +3,7 @@ using QuadGK
 using Distributions
 using Calculus
 using Plots
+using OrdinaryDiffEq
 gr()
 
 
@@ -70,6 +71,26 @@ function slope(F_m)
 end
 
 """
+Function to define the equation of motion of adiabatic surface
+"""
+function Acceleration(du,u,p,t)
+   x = u[1]
+   dx = u[2]
+   du[1] = dx
+   du[2] = F(x)/M
+end
+
+function classical_propagation_2(x_0, v_0,T::Float64, dt)
+    tspan = (0.0,T)
+    EoM = ODEProblem(Acceleration,[x_0,v_0],tspan)
+    sol = solve(EoM, Euler(), dt = dt)
+    x = sol[1,:]
+    v = sol[2,:]
+    return x,v
+end
+
+
+"""
 Function to classically propagate nuclei along lower potential energy surface
 initial_position = x_0
 initial_velocity = v_0
@@ -124,53 +145,43 @@ end
 Function to trace motion of atom
 x_0 = initial displacement from equilibrium bond length.
 """
-function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt,T)
-    trace = zeros(T)
-    f = zeros(T)
-    kinetic_energy = zeros(T)
-    potential_energy = zeros(T)
-    x_i0 = -R_0/2 - dx; x_f0 = R_0/2 + dx; x_eq = R_0; x = R_0 + 2*dx; v = v_0;
+function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt,T::Float64)
+    x_f0 = (R_0+dx)/2; x_i0 = -x_f0; x_eq = R_0; x = R_0 + dx;
     n_a_p_i(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[1]
     n_a_p_f(R) = non_adiabatic_potential(R, R_0, e_i0, e_f0)[2]
     a_p_m(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[1]
     a_p_p(R) = adiabatic_potential(R, R_0, e_i0, e_f0, J_if)[2]
     F_i, F_f = force_from_V(n_a_p_i, n_a_p_f, false)
     F_m, F_p = force_from_V(a_p_m, a_p_p, false)
-    slope_m = slope(F_m)
+    # slope_m = slope(F_m)
     # x, v = classical_propagation(F_i, m, R_0+dx, R_0, v_0, )
-    xs = zeros(T)
+    F = F_m; M = m
+    x,v = classical_propagation_2(x,v_0,T,dt)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
     p1 = plot(r -> n_a_p_i(r),-10,10)
     # p1 = plot!(r -> a_p_p(r),0,20, color = :red)
     # p1 = plot!(r -> a_p_m(r),0,20, color = :red)
-    for i in 1:T
-        trace[i] = i*dt
-        x,v = classical_propagation(F_m, m, real(x), R_0, real(v), dt, slope_m)
-        xs[i] = real(x)
-        x1_new = -real(x)/2
-        x2_new = + real(x)/2
-        v_new = real(v)
-        V1 = a_p_m(x1_new)
-        V2 = a_p_m(x2_new)
-        # a_p_p(R) = adiabatic_potential(R, xs[i], V1, V2, J_if)[1]
-        # a_p_m(R) = adiabatic_potential(R, xs[i], V1, V2, J_if)[2]
-        kinetic_energy[i] = 0.5*m*v_new^2
-        potential_energy[i] = V2+V1
-        p1 = plot(r -> n_a_p_i(r),-10,10, color = :blue)
-        p1 = plot!(r -> n_a_p_f(r),-10,10, color = :blue)
-        p1 = plot!(r -> a_p_p(r),-10,10, color = :red)
-        p1 = plot!(r -> a_p_m(r),-10,10, color = :red)
-        p1 = scatter!([x1_new],[V1], markershape = :circle, color = :blue)
-        p1 = scatter!([x2_new],[V2], markershape = :circle, color = :black)
-        gui()
+    x1 = -x/2; x2 = x/2;
+    V1 = [a_p_m(pos) for pos in x1]
+    V2 = [a_p_p(pos) for pos in x1]
+    KE = 0.5*m*v.^2
+    PE = V1 + V2
+    TE = KE + PE
+    t = range(0.,dt,length(x))
+    for i in 1:length(x)
+        if i%1000==0
+            p1 = plot(r->a_p_m(r),-10,10)
+            p1 = scatter!([x1[Int(i)]],[V1[Int(i)]],color = :black, markershape = :circle)
+            gui()
+        end
     end
 
-    p2 = plot(xs, [f, kinetic_energy, potential_energy])
-    p3 = plot(trace, xs)
+    p2 = plot(x, [KE, PE,TE])
+    p3 = plot(t, x)
     plot(p1,p2,p3,layout = (1,3))
     gui()
     #println("min x = ",xmin, "F = ", f_xmin, "max x = ", xmax, "F = ", f_xmax )
-    return f, kinetic_energy, potential_energy
+    return x, v
 end
 
 """
