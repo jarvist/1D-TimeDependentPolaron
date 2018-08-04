@@ -155,17 +155,18 @@ function plot_trajectory(dx::Float64, v_0::Float64, R_0, e_i0, e_f0, J_if, m, dt
     F_m, F_p = force_from_V(a_p_m, a_p_p, false)
     # slope_m = slope(F_m)
     # x, v = classical_propagation(F_i, m, R_0+dx, R_0, v_0, )
-    F = F_m; M = m
+    F(R) = -F_m(R/2); M = m
     x,v = classical_propagation_2(x,v_0,T,dt)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
     p1 = plot(r -> n_a_p_i(r),-10,10)
     # p1 = plot!(r -> a_p_p(r),0,20, color = :red)
     # p1 = plot!(r -> a_p_m(r),0,20, color = :red)
     x1 = -x/2; x2 = x/2;
+    force = [F(pos) for pos in x]
     V1 = [a_p_m(pos) for pos in x1]
     V2 = [a_p_p(pos) for pos in x1]
     KE = 0.5*m*v.^2
-    PE = V1 + V2
+    PE = 2*V1
     TE = KE + PE
     t = range(0.,dt,length(x))
     for i in 1:length(x)
