@@ -84,7 +84,7 @@ function Acceleration(du,u,p,t)
    x = u[1]
    dx = u[2]
    du[1] = dx
-   du[2] = F(x)/M
+   du[2] = real(F(x)/M)
 end
 
 """
@@ -258,10 +258,12 @@ Non_adiabatic_states
 N = number of sites
 ----------
 Find a good estimate of the width of each state.
+using exp(-(R-R_0)^2/2), A = 1.331335363800389
 """
 function non_adiabatic_states(R,R_0s)
     phis = zeros(2)
-    phi(R, R_0) = exp(-(R-R_0)^2/(2))
+    A = 1/0.354021770137867
+    phi(R, R_0) = A*exp(-(R-R_0)^2/(0.01))
     for i in 1:2
         phis[i] = phi(R, R_0s[i])
     end
@@ -276,7 +278,7 @@ function NACV(psi_1, psi_2)
     #grad_psi_1(R) = derivative(r->psi_1(r),R)
     grad_psi_2(R) = derivative(r->psi_2(r),R)
     overlap(R) = dot(conj(psi_1(R)),grad_psi_2(R)) #fix the time derivative of R.
-    d_jk = (quadgk(psi_1, real(-10), real(10)))[1]
+    d_jk = riemann(overlap,-10,10,1000)
 
     return d_jk
 
@@ -287,9 +289,21 @@ Function to generate the full electronic wavefunction as a linear combination of
 adiabatic_states by propagating the initial coeffients forwards in time (solving
 the TDSE)
 """
-function wavefunction_coefficients(a_i1, a_i2, a_p_m, a_p_p, R_e, dR, dt)
-    a_f1 = a_i1 - dt*im*a_p_m(R_e) - a_i2*NACV(psi_1, psi_2)*dR
-    a_f2 = a_i2 - dt*im*a_p_p(R_e) - a_i1*NACV(psi_2, psi_1)*dR
+function wavefunction_coefficients(psi_1,psi_2,a_i1, a_i2, a_p_m, a_p_p, R_e, dR, dt)
+    # a_f1 = a_i1 - dt*im*a_p_m(R_e) - a_i2*NACV(psi_1, psi_2)*dR
+    # a_f2 = a_i2 - dt*im*a_p_p(R_e) - a_i1*NACV(psi_2, psi_1)*dR
+    d_12 = NACV(psi_1, psi_2)
+    d_21 = NACV(psi_2, psi_1)
+    Matrix = [-im*a_p_m(R_e) -d_12*dR/dt ; -d_21*dR/dt -im*a_p_p(R_e)]
+    # println(M)
+    lambdas = eigvals(Matrix)
+    one,two,three,four = eigvecs(Matrix)
+    C = (a_i1*four - a_i2*three)/(one*four - two*three)
+    D = -(a_i1*two - a_i2*one)/(one*four - two*three)
+    println(C,"   ",D)
+    println(one,"    ", four)
+    a_f1 = C*one*exp(lambdas[1]*dt) + D*three*exp(lambdas[2]*dt)
+    a_f2 = C*two*exp(lambdas[1]*dt) + D*four*exp(lambdas[2]*dt)
     return a_f1, a_f2
 end
 
@@ -316,7 +330,7 @@ function electronic_wavefunction(site, R_n, n_a_p_i, n_a_p_f, a_1, a_2, J_if, pl
     if plotting
         plot(r-> Psi(r), -10, 10)
     else
-        return Psi, psi_1, psi_2, c_11, c_12, c_21, c_22
+        return Psi, psi_1, psi_2
     end
 end
 
@@ -347,10 +361,32 @@ end
 set up system parameters
 plot initial state
 propagate nuclei classically by dt
+propagate wavefunction coefficients.
 
 """
-function surface_hopping_2(R_0,x_0,v_0)
+function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_p_m, a_p_p, a_1, a_2)
 # Initialise System
+    PESm = true
+    site = -1
+    p1 = plot(r -> n_a_p_i(r),-R_0,R_0, color = :red)
+    p1 = plot!(r -> n_a_p_f(r),-R_0,R_0, color = :red)
+    p1 = plot!(r -> a_p_m(r),-R_0,R_0, color = :blue)
+    p1 = plot!(r -> a_p_p(r),-R_0,R_0, color = :blue)
+    p1 = scatter!([x_0/2],[a_p_m(x_0/2)], markershape = :circle, color = :black)
+    p1 = scatter!([-x_0/2],[a_p_m(-x_0/2)], markershape = :circle, color = :black)
+    gui()
+
+    
+    x,v = classical_propagation_2(x_0,v_0,1.,0.05)
+    println("done")
+    x1 = -x/2; x2 = x/2; Vg = [a_p_m(pos) for pos in x1];Ve = [a_p_p(pos) for pos in x1];
+    KE = 0.5*v.^2; PE = 2*Vg
+    a1 = zeros(Complex,21); a2 = zeros(Complex,21); a1[1] = a_1; a2[1] = a_2
+    for i in 1:20
+        Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[i], n_a_p_i, n_a_p_f, a1[i], a2[i], J_if, false)
+        a1[i+1], a2[i+1] = wavefunction_coefficients(psi_1,psi_2,a1[i],a2[i],a_p_m, a_p_p,site*x[i]/2,x[i+1]-x[i],0.01)
+    end
+
 end
 # function test_wf_propagation()
 #     plot_trajectory()
@@ -443,17 +479,15 @@ end
 Numeric integration, taken from http://mth229.github.io/integration.html
 """
 function riemann(f::Function, a::Real, b::Real, n::Int; method="right")
-  if method == "right"
-     meth(f,l,r) = f(r) * (r-l)
-  elseif method == "left"
-     meth(f,l,r) = f(l) * (r-l)
-  elseif method == "trapezoid"
-     meth(f,l,r) = (1/2) * (f(l) + f(r)) * (r-l)
-  elseif method == "simpsons"
-     meth(f,l,r) = (1/6) * (f(l) + 4*(f((l+r)/2)) + f(r)) * (r-l)
-  end
+    meth(f,l,r) = (1/6) * (f(l) + 4*(f((l+r)/2)) + f(r)) * (r-l)
+
 
   xs = a + (0:n) * (b-a)/n
-  as = [meth(f, l, r) for (l,r) in zip(xs[1:end-1], xs[2:end])]
+  first = xs[1:end-1]; last = xs[2:end]; join = [first ; last];
+  len = length(join)/2
+  elements = reshape(join,(Int(len),2))
+  pair = [elements[i,:] for i in 1:Int(len)]
+  as = [meth(f,l,r) for (l,r) in pair]#meth(f, l, r)
   sum(as)
+
 end
