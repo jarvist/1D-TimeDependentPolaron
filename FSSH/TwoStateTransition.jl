@@ -1,9 +1,8 @@
 
-using QuadGK
 using Distributions
 using Calculus
-using Plots
 using OrdinaryDiffEq
+using Plots
 gr()
 
 # Force constant from Wang = 14500 amu/ps^2 = 14500 * 1.66e-27(kg) / 10^(-24)(s^2) = 24.07
@@ -36,10 +35,10 @@ end
 """
 Function to define the adiabatic potentials from the non_adiabatic_potentials
 """
-function adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)
+function adiabatic_potential(K, R_0, e_i0, e_f0, J_if)
     n_a_p_i, n_a_p_f = non_adiabatic_potential(K, R_0, e_i0, e_f0)
-    a_p_m = 0.5*(n_a_p_i(R)+n_a_p_f(R)) - 0.5*sqrt((n_a_p_i(R)-n_a_p_f(R))^2+4*J_if^2)
-    a_p_p = 0.5*(n_a_p_i(R)+n_a_p_f(R)) + 0.5*sqrt((n_a_p_i(R)-n_a_p_f(R))^2+4*J_if^2)
+    a_p_m = function (R) return 0.5*(n_a_p_i(R)+n_a_p_f(R)) - 0.5*sqrt((n_a_p_i(R)-n_a_p_f(R))^2+4*J_if^2) end
+    a_p_p = function (R) return 0.5*(n_a_p_i(R)+n_a_p_f(R)) + 0.5*sqrt((n_a_p_i(R)-n_a_p_f(R))^2+4*J_if^2) end
     return a_p_m, a_p_p
 end
 
@@ -59,8 +58,8 @@ Function to calculate the force field from the potential energy curves, V.
 using the relation F = m*a = -∇V
 """
 function force_from_V(a_p_m, a_p_p, plotting::Bool=true)
-    F_p = function (x) return -derivative(R -> a_p_p(R),x) end
-    F_m = function (x) return -derivative(R -> a_p_m(R),x) end
+    F_p(x) = -derivative(R -> a_p_p(R),x)
+    F_m(x) = -derivative(R -> a_p_m(R),x)
 
     if plotting
         plot(x->F_p(x), -R_0, R_0, label = "F_p")
@@ -92,10 +91,10 @@ end
 """
 choice of T and dt are important.
 """
-function classical_propagation_2(x_0, v_0,T::Float64, dt, F_m)
+function classical_propagation_2(x_0, v_0,T::Float64, dt, F)
     #F = function (R) return F_m(R/2) end
     tspan = (0.0,T)
-    myAcceleration(du,u,p,t)=Acceleration(du,u,p,t,F_m)
+    myAcceleration(du,u,p,t)=Acceleration(du,u,p,t,F)
 
     EoM = ODEProblem(myAcceleration,[x_0,v_0],tspan)
     sol = solve(EoM, Euler(), dt = dt)
@@ -383,38 +382,43 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_p_m, a_p_p, a_1, a_2
 
     for j in 1:500
         if PESm == true
-            x,v = classical_propagation_2(x_0,v_0,0.004*j,0.0002,F_m)
+            x,v = classical_propagation_2(real(x_0),real(v_0),0.01,0.0005,F_m)
         else
-            println("upper")
-            x,v = classical_propagation_2(x_0,v_0,0.004*j,0.0002,F_p)
+            x,v = classical_propagation_2(real(x_0),real(v_0),0.01,0.0005,F_p)
         end
         x1 = -x/2; x2 = x/2; Vg = [a_p_m(pos) for pos in x1];Ve = [a_p_p(pos) for pos in x1];
-        KE = 0.5*v.^2
 
+        KE = 0.5*v.^2
         if PESm == true
             PE = 2*Vg
             V_change = 2*(Ve-Vg)
         else
             PE = 2*Ve
             V_change = 2*(Vg-Ve)
-
         end
         Total_E = KE +PE
+
         a1 = zeros(Complex,21); a2 = zeros(Complex,21); a1[1] = a_1; a2[1] = a_2
         x_0 = x[end]; v_0 = v[end]
         for i in 1:20
             Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[i], n_a_p_i, n_a_p_f, a1[i], a2[i], J_if, false)
             d_12 = NACV(psi_1,psi_2); d_21 = NACV(psi_2, psi_2)
-            a1[i+1], a2[i+1] = wavefunction_coefficients(d_12,d_21,a1[i],a2[i],a_p_m, a_p_p,site*x[i]/2,x[i+1]-x[i],0.0002)
+            a1[i+1], a2[i+1] = wavefunction_coefficients(d_12,d_21,a1[i],a2[i],a_p_m, a_p_p,site*x[i]/2,x[i+1]-x[i],0.0005)
         end
         Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[end], n_a_p_i, n_a_p_f, a1[end], a2[end], J_if, false)
+
+        if abs(Psi(x1[end])) > abs(Psi(x2[end]))
+            site = -1
+        else
+            site = +1
+        end
+
         if PESm == true
             d_12 = NACV(psi_1,psi_2)
-            gm_12 = g_12(d_12,x[end]-x[end-1], 0.0002, a1[end], a2[end]); gp_21 = 0
-            println(gm_12)
+            gm_12 = g_12(d_12,x[end]-x[end-1], 0.0005, a1[end], a2[end]); gp_21 = 0
         else
-            d_21 = NACV(psi_2, psi_2)
-            gp_21 = g_21(d_21,x[end]-x[end-1], 0.0002, a1[end], a2[end]); gm_12 =0
+            d_21 = NACV(psi_2, psi_1)
+            gp_21 = g_21(d_21,x[end]-x[end-1], 0.0005, a1[end], a2[end]); gm_12 =0
             println(gp_21)
         end
 
@@ -426,7 +430,7 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_p_m, a_p_p, a_1, a_2
         if chi_rand < max(real(gm_12), real(gp_21))
             println(chi_rand, "    ", max(gm_12, gp_21))
             if Total_E[end] > V_change[end]
-                v_0 = sqrt(v[end]^2+2*(Ve[end]-V_change[end])/M)
+                v_0 = sqrt(complex(v[end]^2+2*(PE[end]-V_change[end])/M))
 
                 if PESm
                     println(PESm," SWAP ", gm_12)
@@ -447,7 +451,8 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_p_m, a_p_p, a_1, a_2
         p1 = plot!(r -> real(Psi(r)), -R_0, R_0, color = :cyan)
         p2 = scatter([x_0/2],[0], markershape = :circle, color = :black, xlims = (-R_0,R_0))
         p2 = scatter!([-x_0/2],[0], markershape = :circle, color = :black)
-        plot(p1,p2,layout = (2,1))
+        p2 = plot!(range(-1,2/length(Total_E), length(Total_E)),[KE,PE,Total_E])
+        plot(p1,p2,layout = (2,1), size = (1200,800))
         gui()
     end
 
