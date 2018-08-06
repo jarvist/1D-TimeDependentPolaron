@@ -15,19 +15,21 @@ gr()
 #
 # ---------------
 # constants used 04/08/18:
-# J_if = 0.136056925,
+# J_if = 0.136056925
 # en = 122.4512325 (but plotted with en = 0)
 # R_0 = 1.4423076923076923
 # K = 1.3204114285714283
 # ----------------
 
+const M = 1
+
 """
 Function to define the non-adiabatic potential for a single site centered on R_0
 Basic quadratic approximation is used with minimum energy e_0
 """
-function non_adiabatic_potential(K, R, R_0, e_i0, e_f0)
-    n_a_p_i = K*(R+R_0/2)^2 + e_i0
-    n_a_p_f = K*(R-R_0/2)^2 + e_f0
+function non_adiabatic_potential(K, R_0, e_i0, e_f0)
+    n_a_p_i = function (R) return (K*(R+R_0/2)^2 + e_i0) end
+    n_a_p_f = function (R) return (K*(R-R_0/2)^2 + e_f0) end
     return n_a_p_i, n_a_p_f
 end
 
@@ -35,9 +37,9 @@ end
 Function to define the adiabatic potentials from the non_adiabatic_potentials
 """
 function adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)
-    n_a_p_i, n_a_p_f = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)
-    a_p_m = 0.5*(n_a_p_i+n_a_p_f) - 0.5*sqrt((n_a_p_i-n_a_p_f)^2+4*J_if^2)
-    a_p_p = 0.5*(n_a_p_i+n_a_p_f) + 0.5*sqrt((n_a_p_i-n_a_p_f)^2+4*J_if^2)
+    n_a_p_i, n_a_p_f = non_adiabatic_potential(K, R_0, e_i0, e_f0)
+    a_p_m = 0.5*(n_a_p_i(R)+n_a_p_f(R)) - 0.5*sqrt((n_a_p_i(R)-n_a_p_f(R))^2+4*J_if^2)
+    a_p_p = 0.5*(n_a_p_i(R)+n_a_p_f(R)) + 0.5*sqrt((n_a_p_i(R)-n_a_p_f(R))^2+4*J_if^2)
     return a_p_m, a_p_p
 end
 
@@ -57,8 +59,8 @@ Function to calculate the force field from the potential energy curves, V.
 using the relation F = m*a = -∇V
 """
 function force_from_V(a_p_m, a_p_p, plotting::Bool=true)
-    F_p(x) = -derivative(R -> a_p_p(R),x)
-    F_m(x) = -derivative(R -> a_p_m(R),x)
+    F_p = function (x) return -derivative(R -> a_p_p(R),x) end
+    F_m = function (x) return -derivative(R -> a_p_m(R),x) end
 
     if plotting
         plot(x->F_p(x), -R_0, R_0, label = "F_p")
@@ -80,19 +82,22 @@ end
 """
 Function to define the equation of motion of adiabatic surface
 """
-function Acceleration(du,u,p,t)
+function Acceleration(du,u,p,t,F)
    x = u[1]
    dx = u[2]
    du[1] = dx
-   du[2] = real(F(x)/M)
+   du[2] = real(F(x/2)/M)
 end
 
 """
 choice of T and dt are important.
 """
-function classical_propagation_2(x_0, v_0,T::Float64, dt)
+function classical_propagation_2(x_0, v_0,T::Float64, dt, F_m)
+    #F = function (R) return F_m(R/2) end
     tspan = (0.0,T)
-    EoM = ODEProblem(Acceleration,[x_0,v_0],tspan)
+    myAcceleration(du,u,p,t)=Acceleration(du,u,p,t,F_m)
+
+    EoM = ODEProblem(myAcceleration,[x_0,v_0],tspan)
     sol = solve(EoM, Euler(), dt = dt)
     x = sol[1,:]
     v = sol[2,:]
@@ -156,16 +161,17 @@ Function to trace motion of atom
 x_0 = initial displacement from equilibrium bond length.
 """
 function plot_trajectory(dx::Float64, v_0::Float64, K, R_0, e_i0, e_f0, J_if, m, dt,T::Float64)
+
     x_f0 = (R_0+dx)/2; x_i0 = -x_f0; x_eq = R_0; x = R_0 + dx;
-    n_a_p_i(R) = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)[1]
-    n_a_p_f(R) = non_adiabatic_potential(K, R, R_0, e_i0, e_f0)[2]
+    n_a_p_i = non_adiabatic_potential(K, R_0, e_i0, e_f0)[1]
+    n_a_p_f = non_adiabatic_potential(K, R_0, e_i0, e_f0)[2]
     a_p_m(R) = adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)[1]
     a_p_p(R) = adiabatic_potential(K, R, R_0, e_i0, e_f0, J_if)[2]
     F_i, F_f = force_from_V(n_a_p_i, n_a_p_f, false)
     F_m, F_p = force_from_V(a_p_m, a_p_p, false)
     # slope_m = slope(F_m)
     # x, v = classical_propagation(F_i, m, R_0+dx, R_0, v_0, )
-    F(R) = F_m(R/2); M = m # These need to be set in the REPL
+    F = function (R) return F_m(R/2) end  # These need to be set in the REPL
     x,v = classical_propagation_2(x,v_0,T,dt)
     #p1 = scatter([x_0], markershape = :circle, color = :black)
     p1 = plot(r -> n_a_p_i(r),-R_0,R_0)
@@ -274,13 +280,15 @@ end
 Function to calculate non-adiabatic coupling vector
 using ADIABATIC states.
 """
-function NACV(psi_1, psi_2)
+function NACV(psi_i, psi_j)
     #grad_psi_1(R) = derivative(r->psi_1(r),R)
-    grad_psi_2(R) = derivative(r->psi_2(r),R)
-    overlap(R) = dot(conj(psi_1(R)),grad_psi_2(R)) #fix the time derivative of R.
-    d_jk = riemann(overlap,-10,10,1000)
+    grad_psi_j(R) = derivative(r->psi_j(r),R)
+    overlap(R) = conj(psi_i(R))*grad_psi_j(R) #fix the time derivative of R.
+    d_ij = riemann(overlap,-10,10,1000)
+    # test(R) = conj(psi_i(R))*psi_i(R)
+    # println(riemann(test,-10,10,1000))
 
-    return d_jk
+    return d_ij
 
 end
 
@@ -289,19 +297,17 @@ Function to generate the full electronic wavefunction as a linear combination of
 adiabatic_states by propagating the initial coeffients forwards in time (solving
 the TDSE)
 """
-function wavefunction_coefficients(psi_1,psi_2,a_i1, a_i2, a_p_m, a_p_p, R_e, dR, dt)
+function wavefunction_coefficients(d_12, d_21,a_i1, a_i2, a_p_m, a_p_p, R_e, dR, dt)
     # a_f1 = a_i1 - dt*im*a_p_m(R_e) - a_i2*NACV(psi_1, psi_2)*dR
     # a_f2 = a_i2 - dt*im*a_p_p(R_e) - a_i1*NACV(psi_2, psi_1)*dR
-    d_12 = NACV(psi_1, psi_2)
-    d_21 = NACV(psi_2, psi_1)
     Matrix = [-im*a_p_m(R_e) -d_12*dR/dt ; -d_21*dR/dt -im*a_p_p(R_e)]
     # println(M)
     lambdas = eigvals(Matrix)
     one,two,three,four = eigvecs(Matrix)
     C = (a_i1*four - a_i2*three)/(one*four - two*three)
     D = -(a_i1*two - a_i2*one)/(one*four - two*three)
-    println(C,"   ",D)
-    println(one,"    ", four)
+    # println(C,"   ",D)
+    # println(one,"    ", four)
     a_f1 = C*one*exp(lambdas[1]*dt) + D*three*exp(lambdas[2]*dt)
     a_f2 = C*two*exp(lambdas[1]*dt) + D*four*exp(lambdas[2]*dt)
     return a_f1, a_f2
@@ -338,9 +344,8 @@ end
 Function to calculate switching probabilities
 Just considering state on V_11 to start.
 """
-function g_12(dR, dt, a1, a2)
-    d_12 = NACV(psi_1, psi_2)
-    g_12 = 2*real(conj(a2)*a1*dR*d_12)*dt/(a1*conj(a1))
+function g_12(d_12,dR, dt, a1, a2)
+    g_12 = 2*real(conj(a2)*a1*dR*d_12/(dt*a1*conj(a1)))
     return g_12
 end
 
@@ -349,9 +354,8 @@ end
 Function to calculate switching probabilities
 Just considering state on V_22 to start.
 """
-function g_21(dR, dt, a1, a2)
-    d_21 =  NACV(psi_2,psi_1)
-    g_21 = 2*real(conj(a1)*a2*dR*d_21)*dt/(a2*conj(a2))
+function g_21(d_21,dR, dt, a1, a2)
+    g_21 = 2*real(conj(a1)*a2*dR*d_21/(dt*a2*conj(a2)))
     return g_21
 end
 
@@ -364,7 +368,7 @@ propagate nuclei classically by dt
 propagate wavefunction coefficients.
 
 """
-function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_p_m, a_p_p, a_1, a_2)
+function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_p_m, a_p_p, a_1, a_2,F_m,F_p)
 # Initialise System
     PESm = true
     site = -1
@@ -376,15 +380,75 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_p_m, a_p_p, a_1, a_2
     p1 = scatter!([-x_0/2],[a_p_m(-x_0/2)], markershape = :circle, color = :black)
     gui()
 
-    
-    x,v = classical_propagation_2(x_0,v_0,1.,0.05)
-    println("done")
-    x1 = -x/2; x2 = x/2; Vg = [a_p_m(pos) for pos in x1];Ve = [a_p_p(pos) for pos in x1];
-    KE = 0.5*v.^2; PE = 2*Vg
-    a1 = zeros(Complex,21); a2 = zeros(Complex,21); a1[1] = a_1; a2[1] = a_2
-    for i in 1:20
-        Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[i], n_a_p_i, n_a_p_f, a1[i], a2[i], J_if, false)
-        a1[i+1], a2[i+1] = wavefunction_coefficients(psi_1,psi_2,a1[i],a2[i],a_p_m, a_p_p,site*x[i]/2,x[i+1]-x[i],0.01)
+
+    for j in 1:500
+        if PESm == true
+            x,v = classical_propagation_2(x_0,v_0,0.004*j,0.0002,F_m)
+        else
+            println("upper")
+            x,v = classical_propagation_2(x_0,v_0,0.004*j,0.0002,F_p)
+        end
+        x1 = -x/2; x2 = x/2; Vg = [a_p_m(pos) for pos in x1];Ve = [a_p_p(pos) for pos in x1];
+        KE = 0.5*v.^2
+
+        if PESm == true
+            PE = 2*Vg
+            V_change = 2*(Ve-Vg)
+        else
+            PE = 2*Ve
+            V_change = 2*(Vg-Ve)
+
+        end
+        Total_E = KE +PE
+        a1 = zeros(Complex,21); a2 = zeros(Complex,21); a1[1] = a_1; a2[1] = a_2
+        x_0 = x[end]; v_0 = v[end]
+        for i in 1:20
+            Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[i], n_a_p_i, n_a_p_f, a1[i], a2[i], J_if, false)
+            d_12 = NACV(psi_1,psi_2); d_21 = NACV(psi_2, psi_2)
+            a1[i+1], a2[i+1] = wavefunction_coefficients(d_12,d_21,a1[i],a2[i],a_p_m, a_p_p,site*x[i]/2,x[i+1]-x[i],0.0002)
+        end
+        Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[end], n_a_p_i, n_a_p_f, a1[end], a2[end], J_if, false)
+        if PESm == true
+            d_12 = NACV(psi_1,psi_2)
+            gm_12 = g_12(d_12,x[end]-x[end-1], 0.0002, a1[end], a2[end]); gp_21 = 0
+            println(gm_12)
+        else
+            d_21 = NACV(psi_2, psi_2)
+            gp_21 = g_21(d_21,x[end]-x[end-1], 0.0002, a1[end], a2[end]); gm_12 =0
+            println(gp_21)
+        end
+
+        chi = Distributions.Uniform()
+        chi_rand = rand(chi)
+        if chi_rand < 0.01
+            println("small chi: ", chi_rand, "    ", max(real(gm_12), real(gp_21)))
+        end
+        if chi_rand < max(real(gm_12), real(gp_21))
+            println(chi_rand, "    ", max(gm_12, gp_21))
+            if Total_E[end] > V_change[end]
+                v_0 = sqrt(v[end]^2+2*(Ve[end]-V_change[end])/M)
+
+                if PESm
+                    println(PESm," SWAP ", gm_12)
+                    PESm = false
+                    gm_12 = 0
+                else
+                    println(PESm," SWAP ", gp_21)
+                    PESm = true
+                    gp_21 = 0
+                end
+            end
+        end
+        #println(Psi(0.5))
+        p1 = plot(r -> n_a_p_i(r),-R_0,R_0, color = :red)
+        p1 = plot!(r -> n_a_p_f(r),-R_0,R_0, color = :red)
+        p1 = plot!(r -> a_p_m(r),-R_0,R_0, color = :blue)
+        p1 = plot!(r -> a_p_p(r),-R_0,R_0, color = :blue)
+        p1 = plot!(r -> real(Psi(r)), -R_0, R_0, color = :cyan)
+        p2 = scatter([x_0/2],[0], markershape = :circle, color = :black, xlims = (-R_0,R_0))
+        p2 = scatter!([-x_0/2],[0], markershape = :circle, color = :black)
+        plot(p1,p2,layout = (2,1))
+        gui()
     end
 
 end
@@ -410,6 +474,7 @@ function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J
     electronic_wavefunction = a_12
 
     while t+t_total<(T-2)
+        #F(R) = F_m(R/2); M=1;
         x,v = classical_propagation(F_m, m, real(x), R_0, real(v), dt, slope_m)
         xs[Int(2+(t+t_total)/dt)] = real(x)
         xn_new = real(x)/2
