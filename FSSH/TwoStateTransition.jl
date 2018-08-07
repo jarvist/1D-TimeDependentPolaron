@@ -236,7 +236,7 @@ function non_adiabatic_states(R,R_0s)
     phis = zeros(2)
     A = 1/0.354021770137867
     phi(R, R_0) = A*exp(-(R-R_0)^2/(0.01))
-    for i in 1:2
+    for i in 1:length(R_0s)
         phis[i] = phi(R, R_0s[i])
     end
     return phis
@@ -245,9 +245,9 @@ end
 """
 Overlap of diabatic states
 """
-function overlap(phi_1, phi_2)
-    overlap(R) = conj(phi_1(R))*phi_2(R)
-    J_12 = riemann(overlap, -10,10,1000)
+function overlap_phi(phi_1, phi_2)
+    overlap_phi(R) = conj(phi_1(R))*phi_2(R)
+    J_12 = riemann(overlap_phi, -10,10,1000)
     return J_12
 end
 
@@ -255,9 +255,9 @@ end
 Function to calculate non-adiabatic coupling vector
 using ADIABATIC states.
 """
-function NACV(psi_i, psi_j)
+function NACV(psi_i, psi_j, site)
     #grad_psi_1(R) = derivative(r->psi_1(r),R)
-    grad_psi_j(R) = derivative(r->psi_j(r/2),R)
+    grad_psi_j(R) = derivative(r->psi_j(site*r/2),R)
     overlap(R) = conj(psi_i(R))*grad_psi_j(R) #fix the time derivative of R.
     d_ij = riemann(overlap,-10,10,1000)
     # test(R) = conj(psi_i(R))*psi_i(R)
@@ -302,10 +302,11 @@ electron located at R_e; between 2 nuclei at R_n1 and R_n2
 function electronic_wavefunction(site, R_n, n_a_p_i, n_a_p_f, a_1, a_2, J_if, phis, plotting::Bool=true)
     R_e = site*R_n; R_n1 = -R_n; R_n2 = R_n
     H_diabatic = [n_a_p_i(R_e) J_if; J_if n_a_p_f(R_e)]
+    phi_1(R) = phis(R)[1]; phi_2(R) = phis(R)[2]
     #H_adiabatic = [a_p_m(R_e) 0; 0 a_p_p(R_e)p3 = ]
     c_11, c_12, c_21, c_22 = eigvecs(H_diabatic)
-    psi_1(R) = c_11*phis(R)[1] + c_12*phis(R)[2]
-    psi_2(R) = c_21*phis(R)[1] + c_22*phis(R)[2]
+    psi_1(R) = c_11*phi_1(R)[1] + c_12*phi_2(R)
+    psi_2(R) = c_21*phi_1(R)[1] + c_22*phi_2(R)
     Psi(R) = a_1*psi_1(R) + a_2*psi_2(R)
     if plotting
         plot(r-> Psi(r), -10, 10)
@@ -333,7 +334,13 @@ function g_21(d_21,dR, dt, a1, a2)
     return g_21
 end
 
-
+"""
+Function to define a change in parameters
+"""
+function r(R,Rn)
+    r = R - Rn
+    return r
+end
 
 """
 set up system parameters
@@ -342,15 +349,15 @@ propagate nuclei classically by dt
 propagate wavefunction coefficients.
 
 """
-function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0)
+function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, phis)
 # Initialise System
     PESm = true
     site = -1
-    x1 = -x_0/2; x2 = x_0/2
-    phis(R) = non_adiabatic_states(R, [x1, x2])
-    phi_1(R)= phis(R)[1];
+    x1 = -x_0/2; x2 = x_0/2; x_n = x_0; v_n = v_0; PE = zeros(105000); KE = zeros(105000);TE = zeros(105000)
+    # phis(R) = non_adiabatic_states(R, [x1, x2])
+    phi_1(R) = phis(R)[1]
     phi_2(R) = phis(R)[2]
-    J_if = overlap(phi_1,phi_2)
+    J_if = overlap_phi(phi_1,phi_2)
     a_p_m = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[1]
     a_p_p = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[2]
     F_m, F_p = force_from_V(a_p_m, a_p_p, false)
@@ -363,42 +370,43 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0)
     p1 = scatter!([-x_0/2],[a_p_m(-x_0/2)], markershape = :circle, color = :black)
     gui()
 
-
-    for j in 1:500
+    for j in 1:5000
         if PESm == true
-            x,v = classical_propagation_2(real(x_0),real(v_0),0.01,0.0005,F_m)
+            x,v = classical_propagation_2(real(x_n),real(v_n),0.01,0.0005,F_m)
         else
-            x,v = classical_propagation_2(real(x_0),real(v_0),0.01,0.0005,F_p)
+            x,v = classical_propagation_2(real(x_n),real(v_n),0.01,0.0005,F_p)
         end
 
         x1 = -x/2; x2 = x/2; Vg = [a_p_m(pos) for pos in x1];Ve = [a_p_p(pos) for pos in x1];
 
-        KE = 0.5*v.^2
+        KE[21*(j-1)+1:21*(j-1)+21] = 0.5*v.^2
         if PESm == true
-            PE = 2*Vg
+            PE[21*(j-1)+1:21*(j-1)+21] = 2*Vg
             V_change = 2*(Ve-Vg)
         else
-            PE = 2*Ve
+            PE[21*(j-1)+1:21*(j-1)+21] = 2*Ve
             V_change = 2*(Vg-Ve)
         end
-        Total_E = KE +PE
+        println("KE = ", KE[2*(j-1)+2], "PE = ", PE[2*(j-1)+2])
+        TE[21*(j-1)+1:21*(j-1)+21] = KE[21*(j-1)+1:21*(j-1)+21]+PE[21*(j-1)+1:21*(j-1)+21]
 
-        phis(R) = non_adiabatic_states(R, [x1[end],x2[end]])
-        phi_1(R) = phis(R)[1]
-        phi_2(R) = phis(R)[2]
-        J_if = overlap(phi_1,phi_2)
-        a_p_m = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[1]
-        a_p_p = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[2]
-        F_m, F_p = force_from_V(a_p_m, a_p_p, false)
+
 
         a1 = zeros(Complex,21); a2 = zeros(Complex,21); a1[1] = a_1; a2[1] = a_2
-        x_0 = x[end]; v_0 = v[end]
+        x_n = x[end]; v_n = v[end]
         for i in 1:20
-            Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[i], n_a_p_i, n_a_p_f, a1[i], a2[i], J_if, phis, false)
-            d_12 = NACV(psi_1,psi_2); d_21 = NACV(psi_2, psi_2)
+            phi_1n(R) = phi_1(R-(x_0/2-x2[end]))
+            phi_2n(R) = phi_2(R+(x_0/2-x2[end]))
+            phisn(R) = [phi_1n(R),phi_2n(R)]
+            J_if = overlap_phi(phi_1n,phi_2n)
+            a_p_m = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[1]
+            a_p_p = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[2]
+            F_m, F_p = force_from_V(a_p_m, a_p_p, false)
+            Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[i], n_a_p_i, n_a_p_f, a1[i], a2[i], J_if, phisn, false)
+            d_12 = NACV(psi_1,psi_2, site); d_21 = NACV(psi_2, psi_1, site)
             a1[i+1], a2[i+1] = wavefunction_coefficients(d_12,d_21,a1[i],a2[i],a_p_m, a_p_p,site*x[i]/2,x[i+1]-x[i],0.0005)
         end
-        Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[end], n_a_p_i, n_a_p_f, a1[end], a2[end], J_if, phis, false)
+        Psi, psi_1, psi_2 = electronic_wavefunction(site, x2[end], n_a_p_i, n_a_p_f, a1[end], a2[end], J_if, phisn, false)
 
         if abs(Psi(x1[end])) > abs(Psi(x2[end]))
             site = -1
@@ -407,10 +415,10 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0)
         end
 
         if PESm == true
-            d_12 = NACV(psi_1,psi_2)
+            d_12 = NACV(psi_1,psi_2,site)
             gm_12 = g_12(d_12,x[end]-x[end-1], 0.0005, a1[end], a2[end]); gp_21 = 0
         else
-            d_21 = NACV(psi_2, psi_1)
+            d_21 = NACV(psi_2, psi_1,site)
             gp_21 = g_21(d_21,x[end]-x[end-1], 0.0005, a1[end], a2[end]); gm_12 =0
             println(gp_21)
         end
@@ -422,7 +430,7 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0)
         end
         if chi_rand < max(real(gm_12), real(gp_21))
             println(chi_rand, "    ", max(gm_12, gp_21))
-            if Total_E[end] > V_change[end]
+            if PE[end] + KE[end] > V_change[end]
                 v_0 = sqrt(complex(v[end]^2+2*(PE[end]-V_change[end])/M))
 
                 if PESm
@@ -441,14 +449,16 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0)
         p1 = plot!(r -> n_a_p_f(r),-R_0,R_0, color = :red)
         p1 = plot!(r -> a_p_m(r),-R_0,R_0, color = :blue)
         p1 = plot!(r -> a_p_p(r),-R_0,R_0, color = :blue)
-        p1 = plot!(r -> real(Psi(r))+a_p_m(r), -R_0, R_0, color = :cyan, linewidth = 4)
-        p2 = scatter([x_0/2],[0], markershape = :circle, color = :black, xlims = (-R_0,R_0))
-        p2 = scatter!([-x_0/2],[0], markershape = :circle, color = :black)
-        p2 = plot!(range(-1,2/length(Total_E), length(Total_E)),[KE,PE,Total_E])
+        p1 = plot!(r -> real(Psi(r))-1, -R_0, R_0, color = :cyan, linewidth = 4)
+        p2 = scatter([x1[end]],[0], markershape = :circle, color = :black, xlims = (-R_0,R_0))
+        p2 = scatter!([x2[end]],[0], markershape = :circle, color = :black)
         plot(p1,p2,layout = (2,1), size = (1200,800))
         gui()
     end
+    TE = KE + PE
+    plot(PE)
 
+    gui()
 end
 # function test_wf_propagation()
 #     plot_trajectory()
