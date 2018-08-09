@@ -384,7 +384,7 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, 
     n = Int(dt/ddt+1)
     N = (T-1)*n+n
     x1 = -x_0/2; x2 = x_0/2; x_n = x_0; v_n = v_0; PE = zeros(N); KE = zeros(N);TE = zeros(N)
-    APESg_t=zeros(N); APESe_t= zeros(N)
+    APESg_t=zeros(N); APESe_t= zeros(N); APESs_t = zeros(N)
     # phis(R) = non_adiabatic_states(R, [x1, x2])
     phi_1(R) = phis(R)[1]
     phi_2(R) = phis(R)[2]
@@ -393,13 +393,13 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, 
     a_p_p = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[2]
     F_m, F_p = force_from_V(a_p_m, a_p_p, false)
 
-    p1 = plot(r -> n_a_p_i(r),-R_0,R_0, color = :red)
-    p1 = plot!(r -> n_a_p_f(r),-R_0,R_0, color = :red)
-    p1 = plot!(r -> a_p_m(r),-R_0,R_0, color = :blue)
-    p1 = plot!(r -> a_p_p(r),-R_0,R_0, color = :blue)
-    p1 = scatter!([x_0/2],[a_p_m(x_0/2)], markershape = :circle, color = :black)
-    p1 = scatter!([-x_0/2],[a_p_m(-x_0/2)], markershape = :circle, color = :black)
-    gui()
+    # p1 = plot(r -> n_a_p_i(r),-R_0,R_0, color = :red)
+    # p1 = plot!(r -> n_a_p_f(r),-R_0,R_0, color = :red)
+    # p1 = plot!(r -> a_p_m(r),-R_0,R_0, color = :blue)
+    # p1 = plot!(r -> a_p_p(r),-R_0,R_0, color = :blue)
+    # p1 = scatter!([x_0/2],[a_p_m(x_0/2)], markershape = :circle, color = :black)
+    # p1 = scatter!([-x_0/2],[a_p_m(-x_0/2)], markershape = :circle, color = :black)
+    # gui()
 
     for j in 1:T
         if PESm == true
@@ -454,17 +454,19 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, 
 
         if PESm
             gm_12 = g_12(d_12,a1[end], a2[end]); gp_21 = 0
+            APESs_t[n*(j-1)+1:n*(j-1)+n] = Vg
         else
             gp_21 = g_21(d_21, a1[end], a2[end]); gm_12 = 0
+            APESs_t[n*(j-1)+1:n*(j-1)+n] = Ve
         end
 
-        println(gm_12,"     ",gp_21)
+        #println(gm_12,"     ",gp_21)
 
         chi = Distributions.Uniform()
         chi_rand = rand(chi)
         if chi_rand < max(real(gm_12), real(gp_21))
-            println(chi_rand, "    ", max(gm_12, gp_21))
-            println("TE = ", PE[n*(j-1)+n]+KE[n*(j-1)+n], " Potential Jump = ", V_change[end])
+        #    println(chi_rand, "    ", max(gm_12, gp_21))
+        #    println("TE = ", PE[n*(j-1)+n]+KE[n*(j-1)+n], " Potential Jump = ", V_change[end])
             if PE[n*(j-1)+n] + KE[n*(j-1)+n] > V_change[end]
                 v_0 = sqrt(complex(v[end]^2+2*(PE[n*(j-1)+n]-V_change[end])/M))
 
@@ -479,25 +481,33 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, 
                 end
             end
         end
-        #println(Psi(0.5))
-        p1 = plot(r -> n_a_p_i(r),-R_0,R_0, color = :red)
-        p1 = plot!(r -> n_a_p_f(r),-R_0,R_0, color = :red)
-        p1 = plot!(r -> a_p_m(r),-R_0,R_0, color = :blue)
-        p1 = plot!(r -> a_p_p(r),-R_0,R_0, color = :blue)
-        if PESm
-            p1 = plot!(r -> real(Psi(r))-1, -R_0, R_0, color = :cyan, linewidth = 4)
-        else
-            p1 = plot!(r -> real(Psi(r))-1, -R_0, R_0, color = :pink, linewidth = 4)
+        if j%100==0
+            println(j*100, " done ")
         end
-        p2 = scatter([x1[end]],[0], markershape = :circle, color = :black, xlims = (-R_0,R_0))
-        p2 = scatter!([x2[end]],[0], markershape = :circle, color = :black)
-        plot(p1,p2,layout = (2,1), size = (1200,800))
-        gui()
+
+        #println(Psi(0.5))
+        # p1 = plot(r -> n_a_p_i(r),-R_0,R_0, color = :red)
+        # p1 = plot!(r -> n_a_p_f(r),-R_0,R_0, color = :red)
+        # p1 = plot!(r -> a_p_m(r),-R_0,R_0, color = :blue)
+        # p1 = plot!(r -> a_p_p(r),-R_0,R_0, color = :blue)
+        # if PESm
+        #     p1 = plot!(r -> real(Psi(r))-1, -R_0, R_0, color = :cyan, linewidth = 4)
+        # else
+        #     p1 = plot!(r -> real(Psi(r))-1, -R_0, R_0, color = :pink, linewidth = 4)
+        # end
+        # p2 = scatter([x1[end]],[0], markershape = :circle, color = :black, xlims = (-R_0,R_0))
+        # p2 = scatter!([x2[end]],[0], markershape = :circle, color = :black)
+        # plot(p1,p2,layout = (2,1), size = (1200,800))
+        # gui()
     end
     TE = KE + PE
-    plot(KE)
-    plot!(PE)
-    plot!(TE)
+    p1 = plot(KE)
+    p1 = plot!(PE)
+    p1 = plot!(TE)
+    p2 = plot(APESe_t, color = :black)
+    p2 = plot!(APESg_t, color = :black)
+    p2 = plot!(APESs_t, color = :green)
+    plot(p1,p2)
     gui()
 end
 # function test_wf_propagation()
