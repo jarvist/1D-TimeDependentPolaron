@@ -62,9 +62,9 @@ dpr = diabatic potential surface from site right of centre
 ape = excited adiabatic potential energy surface
 apg = ground adiabatic potential energy surface
 """
-function adiabatic_potential(dpl::Function,dpr::Function,J_if::Float64)
-    ape = function (R) return 0.5*(dpl(R)+dpr(R)) + 0.5*sqrt((dpl(R)-dpr(R))^2+4*J_if^2) end
-    apg = function (R) return 0.5*(dpl(R)+dpr(R)) - 0.5*sqrt((dpl(R)-dpr(R))^2+4*J_if^2) end
+function adiabatic_potential(dpl::Function,dpr::Function,J_lr::Float64)
+    ape = function (R) return 0.5*(dpl(R)+dpr(R)) + 0.5*sqrt((dpl(R)-dpr(R))^2+4*abs(J_lr)^2) end
+    apg = function (R) return 0.5*(dpl(R)+dpr(R)) - 0.5*sqrt((dpl(R)-dpr(R))^2+4*abs(J_lr)^2) end
     return apg, ape
 end
 

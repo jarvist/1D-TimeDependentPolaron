@@ -21,6 +21,21 @@ function diabatic_states(R_n::Float64,σ::Float64=0.1)
 end
 
 
+"""
+Overlap of diabatic states to determine coupling strength
+--------------
+phi_l = gaussian centered on left site
+phi_r = gaussian centered on right site
+--------------
+J_lr = coupling strength to be used in diabatic Hamiltonian
+"""
+function overlap_phi(phi_l::Function, phi_r::Function)
+    overlap_phi(R) = conj(phi_l(R))*phi_r(R)
+    J_lr = riemann(overlap_phi, -10,10,1000)
+    return J_lr
+end
+
+
 
 """
 Function for the derivative of a gaussian function
@@ -123,4 +138,20 @@ function a_mn(U_nk::Array,cl::Float64,cr::Float64)
     ag = (cl*U_nk[4] - cr*U_nk[3])/(U_nk[1]*U_nk[4]-U_nk[2]*U_nk[3])
     ae = (cl*U_nk[2] - cr*U_nk[1])/(U_nk[2]*U_nk[3]-U_nk[1]*U_nk[4])
     return ag,ae
+end
+
+
+"""
+Function to determine the probability of switching states
+------------
+a_m = adiabatic coefficient of state m
+a_n = adiabatic coefficient of state n
+d_mn = Non-adiabatic coupling vector for transition from state n to state m
+dt = time step
+------------
+g_mn = probability of a transition from adiabatic surface n to adiabatic surface m
+"""
+function g_mn(a_m::Complex{Float64}, a_n::Complex{Float64}, d_mn::Float64, dt::Float64)
+    g_mn =  -2*real(dt*(conj(a_m)*a_n*d_mn)/(conj(a_n)*a_n))
+    return g_mn
 end
