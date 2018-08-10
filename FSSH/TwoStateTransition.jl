@@ -4,6 +4,7 @@ using Calculus
 using OrdinaryDiffEq
 using Plots
 gr()
+ENV["GKSwstype"] = "100"
 
 # Force constant from Wang = 14500 amu/ps^2 = 14500 * 1.66e-27(kg) / 10^(-24)(s^2) = 24.07
 # equilibrium bond length for hydrogen = 7.5e-11m
@@ -419,7 +420,6 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, 
             J_if = overlap_phi(phi_1n,phi_2n)
             a_p_m = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[1]
             a_p_p = adiabatic_potential(K, R_0, e_i0, e_f0, J_if)[2]
-            F_m, F_p = force_from_V(a_p_m, a_p_p, false)
             Psi, psi_1, psi_2, cs = electronic_wavefunction(site, x2[i], n_a_p_i, n_a_p_f, a1[i], a2[i], J_if, phisn, false)
             d, d1, d2 = NACV(phisn, cs, x2[i+1]-x2[i],ddt); d_12 = d[1]+d[2]; d_21 = d[3]+d[4]
             a1[i+1], a2[i+1] = wavefunction_coefficients(d_12,d_21,d1,d2,a1[i],a2[i],a_p_m, a_p_p,site*x[i]/2,ddt)
@@ -482,7 +482,7 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, 
             end
         end
         if j%100==0
-            println(j*100, " done ")
+            println(j, " done ")
         end
 
         #println(Psi(0.5))
@@ -508,7 +508,7 @@ function surface_hopping_2(R_0,x_0,v_0, n_a_p_i, n_a_p_f, a_1, a_2, e_i0, e_f0, 
     p2 = plot!(APESg_t, color = :black)
     p2 = plot!(APESs_t, color = :green)
     plot(p1,p2)
-    gui()
+    savefig("testing")
 end
 # function test_wf_propagation()
 #     plot_trajectory()
@@ -592,7 +592,7 @@ function surface_hopping(T, dt, F_i, F_f, m, dx, R_i0, R_f0, n_a_p_i, n_a_p_f, J
         p1 = scatter!([x1_new],[V1], markershape = :circle, color = :black)
         p1 = scatter!([x2_new],[V2], markershape = :circle, color = :black)
         p1 = scatter!([xe],[Ve], markershape = :circle, color = :cyan, markersize = :3)
-        gui()
+        savefig("testing")
     end
 
 end
