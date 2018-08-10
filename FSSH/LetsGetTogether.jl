@@ -5,16 +5,16 @@
 using SurfaceHopping
 
 # Initialise system
-PESg = true; plotting = false
+PESg = true; plotting = true
 cl = Complex(1.0); cr = Complex(0.0)
 R_0 = 1.442307; e_l = e_r = 0.0; K = 1.32041142; global M = 1.
-R_n = 2.0; xr = R_n/2; xl = -xr; v_0 = 0.0; R_n0 = 2.0;
+R_n = 2.6; xr = R_n/2; xl = -xr; v_0 = 0.0; R_n0 = 2.6;
 T = 5000.; dt = 0.001; ddt = 0.0001
-n = Int(dt/ddt +1); N = Int(T*n)
+n = Int(dt/ddt +1); N = Int(T)
 
 # Set up empty arrays
-KE = zeros(N); PE = zeros(N); TE = zeros(N)
-gs = zeros(N)
+KE = zeros(N); PE = zeros(N); TE = zeros(N); Ee = zeros(N)
+V_change = zeros(N)
 
 # Generate diabatic potential energy surfaces
 dpl,dpr = diabatic_potential(K, R_0, e_l)
@@ -52,6 +52,7 @@ for i in 1:Int(T)
 
     # Generate necessary parameterd for quantum propagation
     H_d = H_diabatic(dpl(xl),dpr(xl),J_lr_new)
+    H_ad = H_adiabatic(H_d)
     U_nk = diagonalise(H_d)
     a_g, a_e = a_mn(U_nk, cl, cr); a_g = Complex(a_g); a_e = Complex(a_e)
     d_ge, d_eg, d_gg, d_ee = NACV(phi_l_new, phi_r_new, dphi, U_nk, R_n, dx_l, dx_r, 2*dt)
@@ -65,18 +66,38 @@ for i in 1:Int(T)
 
     # Calculate the probability of hopping
     if PESg
-        g = g_mn(a_g, a_e, d_eg, dt)
-         #g_eg
+        g = g_mn(a_g, a_e, d_eg, dt);
+        V_change[i] = ape(R_e) - apg(R_e)
+         #FROM g TO e
     else
-        g = g_mn(a_e, a_g, d_ge, dt)
-         #g_ge
+        g = g_mn(a_e, a_g, d_ge, dt);
+        V_change[i] = apg(R_e) - ape(R_e)
+         #FROM e TO g
     end
 
-    gs[i] = g
-
+    Ee[i] = abs(a_g)^2*H_ad[1] + abs(a_e)^2*H_ad[4]
     KE[i] = 0.5*M*v[end]^2
     PE[i] = apg(R_e)
-
+    if Ee[i] > V_change[i]
+        println("swap possible ")
+    end
+    # Invoke surface hopping:
+    chi = Distributions.Uniform()
+    chi_rand = rand(chi)
+    if chi_rand<g
+        #println(chi_rand, "    ", g)
+        if PE[i] + KE[i] > V_change[i]
+            v_new = sqrt(complex(v[end]^2+2*(PE[i]-V_change[i])/M))
+            v[end] = v_new
+            if PESg
+                println(PESg," SWAP ", g)
+                PESg = false
+            else
+                println(PESg," SWAP ", g)
+                PESg = true
+            end
+        end
+    end
     # Update parameters for next iteration
     R_n = x[end]; v_0 = v[end]; xr = R_n/2; xl = -xr;
 
@@ -87,7 +108,7 @@ for i in 1:Int(T)
         plot!(ape, color=:blue)
         plot!(phi_l_new)
         plot!(phi_r_new)
-        plot!(psi_e)
+        plot!(Psi_r)
         scatter!([xr],[apg(xr)], markershape=:circle)
         scatter!([xl],[apg(xl)], markershape=:circle)
         gui()
@@ -95,6 +116,6 @@ for i in 1:Int(T)
 
 end
 
-TE = KE + PE;
-gs
-#plot(KE[1:Int(T)]); plot!(PE[1:Int(T)]); plot!(TE[1:Int(T)])
+TE = KE + PE
+Ee;
+plot(KE); plot!(PE); plot!(TE); plot!(V_change)

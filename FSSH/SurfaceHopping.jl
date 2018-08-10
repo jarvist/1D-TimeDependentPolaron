@@ -1,7 +1,7 @@
 module SurfaceHopping
 
 export diabatic_potential,H_diabatic,diagonalise,adiabatic_potential,H_adiabatic
-export diabatic_states, overlap_phi, diabatic_derivative, adiabatic_states, NACV, a_mn, g
+export diabatic_states, overlap_phi, diabatic_derivative, adiabatic_states, NACV, a_mn, g_mn
 export force, acceleration, classical_propagation, new_a_mn
 export riemann
 
