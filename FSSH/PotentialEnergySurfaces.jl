@@ -3,19 +3,44 @@
 # Determine adiabatic potential energy surfaces from diagonalising the
 #     diabatic hamiltonian potential.
 
+# """
+# Function to define quadratic potential energy surface
+# ------------
+# A_0 = real constant
+# A_1 = real coefficient of R
+# A_2 = real coefficient of R^2
+# ------------
+# dpl = quadratic function representing site to the left of the bond centre
+# dpr = quadratic function representing site to the right of the bond centre
+# """
+# function diabatic_potential(A_0::Float64, A_1::Float64, A_2::Float64)
+#     dpl = function (R) return A_0 + A_1*R + A_2*R^2 end
+#     dpr = function (R) return dpl(-R) end
+#     return dpl, dpr
+# end
+
 """
-Function to define quadratic potential energy surface
+Function to define linear potential energy surface
+Simple avoided crossing
 ------------
-R_0 = equilibrium bond length
-e_0 = energy at equilibrium bond length
+alpha = on-site EPC constant
+tau = neigbouring sites EPC constant
+overlap = <phi_l(R)|phi_r(R)>
 ------------
-dpl = quadratic function representing site to the left of the bond centre
-dpr = quadratic function representing site to the right of the bond centre
+dpl = linear function representing site to the left of the bond centre
+dpr = linear function representing site to the right of the bond centre
 """
-function diabatic_potential(K::Float64,R_0::Float64,e_0::Float64)
-    dpl = function (R) return K*(R+R_0/2)^2 + e_0 end
-    dpr = function (R) return K*(R-R_0/2)^2 + e_0 end
-    return dpl, dpr
+function diabatic_potential(alpha::Float64, tau::Float64, overlap::Function)
+    dpl = function (R) return -alpha*R/2*(1-abs(overlap(R))^2)-tau*(overlap(R)+conj(overlap(R))) end
+    dpr = function (R) return dpl(-R) end
+    dpx = function (R) return -tau*(overlap(R)^2+1) end
+    return dpl, dpr, dpx
+end
+function diabatic_potential(alpha::Float64, tau::Float64, overlap::Float64)
+    dpl = function (R) return -alpha*R/2*(1-abs(overlap)^2)-tau*(overlap+conj(overlap)) end
+    dpr = function (R) return dpl(-R) end
+    dpx = function (R) return -tau*(overlap^2+1) end
+    return dpl, dpr, dpx
 end
 
 

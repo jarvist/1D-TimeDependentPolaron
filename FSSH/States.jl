@@ -10,14 +10,13 @@ R_n = bond length
 phi_l = gaussian centered on left site
 phi_r = gaussian centered on right site
 """
-function diabatic_states(R_n::Float64,σ::Float64=0.1)
+function diabatic_state(R_n::Float64,σ::Float64=0.374)
     gaussian = function (R) return exp(-R^2/(2*σ^2)) end
     gaussian2(R) = gaussian(R)^2
     A = riemann(gaussian2, -10,10,1000)
     A = 1/sqrt(A)
-    phi_l(R) = A*gaussian(R+R_n/2)
-    phi_r(R) = A*gaussian(R-R_n/2)
-    return phi_l, phi_r
+    phi(R) = A*gaussian(R-R_n)
+    return phi
 end
 
 
@@ -46,7 +45,7 @@ R_n = bond length
 --------------
 d_phi = gaussian derivative
 """
-function diabatic_derivative(σ::Float64=0.1)
+function diabatic_derivative(σ::Float64=0.374)
     dphi = function (R) return (R)*exp(-(R)^2/(2*σ^2))/σ^2 end
 end
 
@@ -88,8 +87,8 @@ d_gg = Non-adiabatic coupling vector from lower to lower adiabatic states
 d_ee = Non-adiabatic coupling vector from upper to upper adiabatic states
 """
 function NACV(phi_l::Function, phi_r::Function, dphi::Function, U_nk::Array, R_n::Float64, dR_l, dR_r, dt)
-    dphi_l = function (R) return dphi(-(R+R_n/2)) end
-    dphi_r = function (R) return dphi((R+R_n/2)) end
+    dphi_l = function (R) return dphi((R)) end
+    dphi_r = function (R) return dphi((R-R_n)) end
 
     # perform integrations for each pair of diabatic states
     int_ll = function (R) return conj(phi_l(R))*dphi_l(R) end
@@ -119,7 +118,7 @@ function NACV(phi_l::Function, phi_r::Function, dphi::Function, U_nk::Array, R_n
     r_ee = dR_r*(conj(U_nk[3]*lr + U_nk[4]*rr)*U_nk[4])/dt
     d_ee = l_ee+r_ee
 
-    return d_ge,d_eg,d_gg,d_ee
+    return d_ge,d_eg,d_gg,d_ee, [l_ge*dt/dR_l, r_ge*dt/dR_r, l_eg*dt/dR_l, r_eg*dt/dR_r]
 end
 
 
