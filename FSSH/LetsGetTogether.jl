@@ -7,7 +7,7 @@ using SurfaceHopping
 # Initialise system
 PESg = true; plotting = false
 cl = Complex(1.0); cr = Complex(0.0)
-R_0 = 5.0; #A
+R_0 = 4.0; #A
 # global hbar_2ma2 = (1.05e-34)^2/(2*9.11e-31*(5.29e-11)^2)/100;
 # global e2_4pie0 = (1.6e-19)^2*(8.987551787368e9)/100;
 # A_0 = (-hbar_2ma2 +3*e2_4pie0/(1.0e-10))/1.6e-19; # [eV]
@@ -18,14 +18,15 @@ K = 1.504375; global M = 250.0; # 1amu/ps^2 = 0.00010375eV/A^2
 temp = 100000
 kb = 8.625000000000001e-5 # eV/Kelvin
 R_n = R_0 + sqrt(kb*temp/K); xr = abs(R_n); xl = 0; v_0 = sqrt(1.6e8/1.66*kb*temp/M);  # [A]
-cycles = 1; T = 1e-2; dt = 5e-5; ddt = 1e-5 # T = 40fs
+cycles = 10; T = 1e-2; dt = 5e-5; ddt = 1e-5 # T = 40fs
 # dt = 1 = 0.1ns (use dt = 1e-10 to balance Angstrom)
 n = Int(round(dt/ddt+1)); N = Int(round(T/(2*dt)))
 
 # Set up empty arrays
-KE = zeros(N); PE = zeros(N); TE = zeros(N); Ee = zeros(N)
+KE = zeros(N); PE = zeros(N); TE = zeros(N); Ee = zeros(N);  En = zeros(N)
 V_change = zeros(N); Empty = zeros(N); Empty2 = zeros(N); Empty3 = zeros(N)
-Empty2 = complex(Empty2); runcount = zeros(cycles)
+Empty2 = complex(Empty2); runfreq = zeros(N)
+freqvsR = Dict{Float64,Int64}()
 
 
 # Generate diabatic electonic states and form of their derivative
@@ -50,7 +51,7 @@ savefig(p1, "Potential Energy Surfaces")
 p2 = plot()
 for l in 1:cycles
     cl = Complex(1.0); cr = Complex(0.0)
-    R_0 = 5.0;
+    R_0 = 4.0;
     R_n = R_0 + sqrt(kb*temp/K); xr = R_n; xl = 0; v_0 = sqrt(1.6e8/1.66*kb*temp/M);
     global count; count = 0
     for i in 1:N
@@ -99,16 +100,18 @@ for l in 1:cycles
         #Empty2[i] = a_g
 
         cl = (U_nk[1]*a_g + U_nk[3]*a_e); c2 = (U_nk[2]*a_g + U_nk[4]*a_e)
-        Ee[i] = abs(a_g)^2*apg(R_n) + abs(a_e)^2*ape(R_n)
+        #Ee[i] = abs(a_g)^2*apg(R_n) + abs(a_e)^2*ape(R_n)
         # Calculate the probability of hopping
         if PESg
             Empty3[i] = g_mn(a_g, a_e, d_eg, 2*dt);
-            #Ee[i] = apg(R_n)
+            En[i] = apg(R_n)
+            Ee[i] = apg(R_n)
             V_change[i] = ape(R_n) - Ee[i]
             #FROM g TO e
         else
             Empty3[i] = g_mn(a_e, a_g, d_ge, 2*dt);
-            #Ee[i] = ape(R_n)
+            En[i] = ape(R_n)
+            Ee[i] = ape(R_n)
             V_change[i] = apg(R_n) - Ee[i]
              #FROM e TO g
         end
@@ -120,7 +123,7 @@ for l in 1:cycles
 
         # Invoke surface hopping:
         chi = Distributions.Uniform()
-        chi_rand = rand(chi)*0.5e-3
+        chi_rand = rand(chi)*0.8e-3
         if chi_rand<g
             #println(chi_rand, "    ", g)
             if PESg
@@ -134,8 +137,13 @@ for l in 1:cycles
             end
             println(V_change[i] ,"      ", KE[i], "      ", 1.66/1.6e8*A^2/(2*B))
             if  V_change[i] < KE[i]
-                count+=1
-                v_new = sqrt(complex(v[end]^2+2*(Ee[i]- V_change[i])/M))#v[end]+d*A/B*(-1+sqrt(complex(1-2*(1.6e8/1.66*V_change[i]*B/A^2))))
+                runfreq[i]+=1
+                if get(freqvsR, round(R_n,1), 0)==0
+                    freqvsR[round(R_n,1)]=1
+                else
+                    freqvsR[round(R_n,1)]+=1
+                end
+                v_new = sign(real(v[end]))*sqrt(complex(v[end]^2-2*(1.6e8/1.66*V_change[i])/M))#v[end]+d*A/B*(-1+sqrt(complex(1-2*(1.6e8/1.66*V_change[i]*B/A^2))))
                 println(v_new-v[end])
                 v[end] = real(v_new)
                 if PESg
@@ -166,13 +174,12 @@ for l in 1:cycles
         end
 
     end
-    runcount[l] = count
     println(l)
-    p2 = plot!(Ee, palette = :viridis, leg=false)
+    p2 = plot!(En, palette = :viridis, leg=false)
 
 end
 TE = KE + PE + Ee;
-Ee; V_change; Empty; Empty2; Empty3; runcount;
+Ee; V_change; Empty; Empty2; Empty3; runfreq;freqvsR
 APG = [apg(pos) for pos in Empty]
 APE = [ape(pos) for pos in Empty]
 # p2 = plot!(APG, leg=false)

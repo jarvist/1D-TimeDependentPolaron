@@ -10,7 +10,7 @@ R_n = bond length
 phi_l = gaussian centered on left site
 phi_r = gaussian centered on right site
 """
-function diabatic_state(R_n::Float64,σ::Float64=0.374)
+function diabatic_state(R_n::Float64,σ::Float64=0.998)
     gaussian = function (R) return exp(-R^2/(2*σ^2)) end
     gaussian2(R) = gaussian(R)^2
     A = riemann(gaussian2, -10,10,1000)
