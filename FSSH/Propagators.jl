@@ -25,11 +25,11 @@ F = force
 -------------
 ODE problem to be used in OrdinaryDiffEq Solver
 """
-function acceleration(du::Array,u::Array,p,t,F::Function, M::Float64, K::Float64, R_0::Float64)
+function acceleration(du::Array,u::Array,p,t,F::Function, M::Float64, K::Float64, R_0::Float64, ExtField::Float64)
     x = u[1]
     dx = u[2]
     du[1] = dx
-    du[2] = 1.6e8/1.66*(-K*(x-R_0)+real(F(x)))/M #1eV/(a.m.u*A) = 1.6e8/1.66 A/(0.1ns)^2
+    du[2] = 1.6e8/1.66*(-K*(x-R_0)+real(F(x))-ExtField)/M #1eV/(a.m.u*A) = 1.6e8/1.66 A/(0.1ns)^2
 end
 
 """
@@ -44,9 +44,9 @@ F = function of force
 x = array of positions
 v = array of velocities
 """
-function classical_propagation(T::Float64, x_0::Float64, R_0::Float64, v_0::Float64, dt::Float64, F::Function, M::Float64, K::Float64)
+function classical_propagation(T::Float64, x_0::Float64, R_0::Float64, v_0::Float64, dt::Float64, F::Function, M::Float64, K::Float64, ExtField::Float64)
     tspan = (0.0,T)
-    myacceleration(du,u,p,t)=acceleration(du,u,p,t,F,M,K,R_0)
+    myacceleration(du,u,p,t)=acceleration(du,u,p,t,F,M,K,R_0,ExtField)
 
     EoM = ODEProblem(myacceleration,[x_0,v_0],tspan)
     sol = solve(EoM, Euler(), dt = dt)
