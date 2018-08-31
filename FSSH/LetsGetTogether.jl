@@ -3,69 +3,87 @@
 
 
 using SurfaceHopping
+using Base
+using Distributions
 
 # Initialise system
-PESg = true; plotting = false
-cl = Complex(1.0); cr = Complex(0.0)
-R_0 = 4.0; #A
+plotting = false;
+# A
 # global hbar_2ma2 = (1.05e-34)^2/(2*9.11e-31*(5.29e-11)^2)/100;
 # global e2_4pie0 = (1.6e-19)^2*(8.987551787368e9)/100;
 # A_0 = (-hbar_2ma2 +3*e2_4pie0/(1.0e-10))/1.6e-19; # [eV]
 # A_1 = -(4*e2_4pie0/(R_0*1e-10))/1.6e-19; # [eV/A]
 # A_2 = (2*e2_4pie0/(R_0*1e-10))/1.6e-19; # [eV/A^2]
-alpha = 0.43395; tau = 0.099188;
-K = 1.504375; global M = 250.0; # 1amu/ps^2 = 0.00010375eV/A^2
+alpha = 0.55; tau = 0.1;
+K = 1.0; global M = 28.07; # 1amu/ps^2 = 0.00010375eV/A^2
 #ExtField = 5.0
-temp = 100000
+temp =9000
 kb = 8.625000000000001e-5 # eV/Kelvin
-R_n = R_0 + sqrt(kb*temp/K); xr = abs(R_n); xl = 0; v_0 = sqrt(1.6e8/1.66*kb*temp/M);  # [A]
-cycles = 100; T = 5e-2; dt = 1e-5; ddt = 1e-5 # T = 40fs
+R_0  = 4.0
+global mean_last
+#R_n = R_0 + sqrt(kb*temp/K); xr = abs(R_n); xl = 0; v_0 = sqrt(1.6e8/1.66*kb*temp/M);  # [A]
+cycles = 1; T = 2e-2; dt = 1e-6; ddt = 1e-6 #
 # dt = 1 = 0.1ns (use dt = 1e-10 to balance Angstrom)
 n = Int(round(dt/ddt+1)); N = Int(round(T/(2*dt)))
 
 # Set up empty arrays
 KE = zeros(N); PE = zeros(N); TE = zeros(N); Ee = zeros(N);  En = zeros(N)
 V_change = zeros(N); Empty = zeros(N); Empty2 = zeros(N); Empty3 = zeros(N); Amps = zeros(N);
-Empty2 = complex(Empty2); runfreq = zeros(N); Amps2 = zeros(N); temp = 0;
-freqvsR = Dict{Float64,Int64}();RateField = Dict{Float64,Float64}();
+Empty2 = complex(Empty2); runfreq = zeros(N); Amps2 = zeros(N); temporary = 0; FieldCount = 0
+freqvsR = Dict{Float64,Int64}();RateField = Dict{Float64,Float64}();FieldFreqs = Dict{Float64,Int64}();
+
+if Base.Filesystem.isdir("$temp, from0.1_0.01 field divisions_31_08")
+    Base.Filesystem.rm("$temp, from0.1_0.01 field divisions_31_08", recursive = true)
+end
+Base.Filesystem.mkdir("$temp, from0.1_0.01 field divisions_31_08")
+Base.Filesystem.cd("$temp, from0.1_0.01 field divisions_31_08")
 
 
-# Generate diabatic electonic states and form of their derivative
+# p1 = plot(apG, color = :blue, label = "Adiabatic PES for ground state", linewidth = 5)
+# plot!(p1,apE, color = :blue, label = "Adiabatic PES for excited state", linewidth = 5)
+# plot!(p1,dpL, color = :green, label = "Diabatic PES for H--H+", linewidth = 5)
+# plot!(p1,dpR, color = :green, label = "Diabatic PES for H+--H", linewidth = 5)
+# plot!(p1,title = "PES for avoided crossing", xlabel = "Bond Distance, Angstrom", ylabel = "Energy, eV", leg= ((0.37,0.98)))
+#savefig(p1, "Potential Energy Surfaces")
 phi_l = diabatic_state(0.);
 phi_r(R) = diabatic_state(R);
 dphi = diabatic_derivative()
 # Calculate coupling term
 J_lr(R) = overlap_phi(phi_l,phi_r(R))
 # Generate diabatic potential energy surfaces
-dpL,dpR,dpX = diabatic_potential(alpha,tau,J_lr)
+alpha_k(R) = alpha+0.0*R_0
+dpL,dpR,dpX = diabatic_potential(alpha,alpha_k,tau,J_lr)
 H_D(R) = H_diabatic(dpL(R),dpR(R),dpX(R))
 #Generate adiabatic potential energy surfaces
 #apg,ape = adiabatic_potential(dpl,dpr,J_lr)
 H_aD(R) = H_adiabatic(H_D(R))
 apG(R) = H_aD(R)[1]; apE(R) = H_aD(R)[4]
-p1 = plot(apG, color = :blue, label = "Adiabatic PES for ground state", linewidth = 5)
-plot!(p1,apE, color = :blue, label = "Adiabatic PES for excited state", linewidth = 5)
-plot!(p1,dpL, color = :green, label = "Diabatic PES for H--H+", linewidth = 5)
-plot!(p1,dpR, color = :green, label = "Diabatic PES for H+--H", linewidth = 5)
-plot!(p1,title = "PES for avoided crossing", xlabel = "Bond Distance, Angstrom", ylabel = "Energy, eV", leg= ((0.37,0.98)))
-#savefig(p1, "Potential Energy Surfaces")
+
 
 p2 = plot()
 p3 = scatter()
-for ExtField in -0.005:0.001:0.005
+Mean_pos = zeros(100)
+for ExtField in -0.1:0.01:0.1
+    FieldCount+=1
+    # Generate diabatic electonic states and form of their derivative
+    #alpha_k(R) = alpha+ExtField*R
+
     println("External Field = ", ExtField*1000," mV/Angstrom")
-    freqvsR = Dict{Float64,Int64}()
     for l in 1:cycles
         #temp = temp*10
+        State_Amplitudes = Array{Float64,}(5000)
         cl = Complex(1.0); cr = Complex(0.0)
+        PESg = true
         R_0 = 4.0;
-        R_n = R_0 + sqrt(kb*temp/K); xr = R_n; xl = 0; v_0 = sqrt(1.6e8/1.66*kb*temp/M);
+        #dR = rand(Normal(0,2*sqrt(kb*temp/K))); dv = rand(Normal(0,2*sqrt(1.6e8/1.66*kb*temp/M)))
+        dR = 2*sqrt(kb*temp/K); dv = 2*sqrt(1.6e8/1.66*kb*temp/M)
+        R_n = R_0 + dR; xr = R_n; xl = 0; v_0 = 0+dv;
         global count; count = 0
         for i in 1:N
             phi_r_new = phi_r(R_n)
             dphi = diabatic_derivative()
             J_lr_new = J_lr(R_n)
-            dpl,dpr,dpx = diabatic_potential(alpha,tau,J_lr_new)
+            dpl,dpr,dpx = diabatic_potential(alpha,alpha+ExtField*abs(R_n),tau,J_lr_new)
             H_d(R) = H_diabatic(dpl(R),dpr(R),dpx(R))
             H_ad(R) = H_adiabatic(H_d(R))
             apg(R) = H_ad(R)[1]; ape(R) = H_ad(R)[4]
@@ -76,7 +94,6 @@ for ExtField in -0.005:0.001:0.005
             else
                 f = force(ape)
             end
-
             # Deteremine which site the electronic state is localised on
             # if PESg & R_n>0
             #     R_e = R_n
@@ -84,7 +101,7 @@ for ExtField in -0.005:0.001:0.005
             #     R_e = R_n
             # end
             # Perform classical propagation of the nuclei from t -> t+dt
-            x,v = classical_propagation(2*dt, R_n, sign(R_n)*R_0, v_0, dt, f, M, K, ExtField)
+            x,v = classical_propagation(2*dt, R_n, sign(R_n)*R_0, v_0, dt, f, M, K, 0.)
             dx = x[end] - x[1]; dx_l = -dx/2; dx_r = -dx_l
 
             # Generate necessary parameterd for quantum propagation
@@ -133,11 +150,11 @@ for ExtField in -0.005:0.001:0.005
             end
 
             KE[i] = 1.66/1.6e8*0.5*M*v[end]^2
-            PE[i] = 0.5*K*(x[end]-R_0)^2
+            PE[i] = 0.5*K*(abs(x[end])-R_0)^2
 
             # Invoke surface hopping:
             chi = Distributions.Uniform()
-            chi_rand = rand(chi)*5e-1
+            chi_rand = rand(chi)/1e3
             if chi_rand<g
                 #println(chi_rand, "    ", g)
                 if PESg
@@ -152,10 +169,10 @@ for ExtField in -0.005:0.001:0.005
                 #println(V_change[i] ,"      ", KE[i], "      ", 1.66/1.6e8*A^2/(2*B))
                 if  V_change[i] < KE[i]
                     runfreq[i]+=1
-                    if get(freqvsR, round(R_n,1), 0)==0
-                        freqvsR[round(R_n,1)]=1
+                    if get(freqvsR, round(abs(R_n),1)+10*(ExtField-1), 0)==0
+                        freqvsR[round(abs(R_n),1)+10*(ExtField-1)]=1
                     else
-                        freqvsR[round(R_n,1)]+=1
+                        freqvsR[round(abs(R_n),1)+10*(ExtField-1)]+=1
                     end
                     v_new = sign(real(v[end]))*sqrt(complex(v[end]^2-2*(1.6e8/1.66*V_change[i])/M))#v[end]+d*A/B*(-1+sqrt(complex(1-2*(1.6e8/1.66*V_change[i]*B/A^2))))
                     #println(v_new-v[end])
@@ -165,11 +182,9 @@ for ExtField in -0.005:0.001:0.005
                     if PESg
                         println(PESg," SWAP ", g)
                         PESg = false
-
                     else
                         println(PESg," SWAP ", g)
                         PESg = true
-
                     end
                 end
             end
@@ -177,36 +192,44 @@ for ExtField in -0.005:0.001:0.005
             Empty[i] = R_n
             R_n = x[end]; v_0 = v[end]; xr = R_n; xl = 0;
 
-            if plotting
-                psi_g, psi_e = adiabatic_states(phi_l, phi_r_new, U_nk)
-                Psi_r(R) = real(a_g)*psi_g(R) + real(a_e)*psi_e(R)
-                # plot(apg, color=:blue, -1.5,1.5)
-                # plot!(ape, color=:blue)
-                plot(phi_l,-2,7)
-                plot!(phi_r_new)
-                plot!(Psi_r)
-                scatter!([0],[0], markershape=:circle)
-                scatter!([R_n],[0], markershape=:circle)
-                ylims!((-1.5,1.5))
-                gui()
-            end
+            # if plotting
+            #     psi_g, psi_e = adiabatic_states(phi_l, phi_r_new, U_nk)
+            #     Psi_r(R) = real(a_g)*psi_g(R) + real(a_e)*psi_e(R)
+            #     # plot(apg, color=:blue, -1.5,1.5)
+            #     # plot!(ape, color=:blue)
+            #     plot(phi_l,-2,7)
+            #     plot!(phi_r_new)
+            #     plot!(Psi_r)
+            #     scatter!([0],[0], markershape=:circle)
+            #     scatter!([R_n],[0], markershape=:circle)
+            #     ylims!((-1.5,1.5))
+            #     gui()
+            # end
 
         end
         println(l)
-        APG = [apG(pos) for pos in Empty]
-        APE = [apE(pos) for pos in Empty]
-        plot!(p2,APG, leg=false, linestyle = :solid, palette = :blues, seriescolor = 1, linewidth = 2)
-        plot!(p2,APE, leg = false, linestyle = :solid, palette = :blues, seriescolor = 1, linewidth = 2)
-        plot!(p2,En, palette = :blues, seriescolor = 2, leg=false, linestyle = :dot, linewidth = 2)
-
-        for tuple in freqvsR
-            scatter!(p3,(tuple[1],tuple[2]), palette = :viridis, seriescolor = l, leg = false)
+        if l > 1
+            mean_last = mean([mean(Amps),mean_last])
+        else
+            mean_last = mean(Amps)
         end
-        temp+=sum(Empty3)
+
+        if l == cycles
+            APG = [apG(pos) for pos in Empty]
+            APE = [apE(pos) for pos in Empty]
+            writedlm("APE, External Field = $ExtField", APE)
+            writedlm("APG, External Field = $ExtField", APG)
+            writedlm("Active Surface, External Field = $ExtField", En)
+            writedlm("Amplitude of state, External Field = $ExtField", Amps)
+        end
+        temporary+=sum(Empty3)
     end
-    RateField[ExtField] = temp/cycles
+
+    Mean_pos[FieldCount] = mean_last
+    RateField[ExtField] = temporary/cycles
     num = 0
-    Max = sort(collect(freqvsR), by = tuple -> last(tuple))
+
+    # Max = sort(collect(freqvsR), by = tuple -> last(tuple))
 
 
     # if length(freqvsR)>0
@@ -220,18 +243,16 @@ for ExtField in -0.005:0.001:0.005
     # end
 
     for tuple in freqvsR
-       if tuple[1]>=0
-           num+=tuple[2]
-       else
-           println(tuple[1])
-       end
-   end
+          num+=tuple[2]
+    end
    FieldFreqs[ExtField] = num
 end
 TE = KE + PE + Ee;
 Ee; V_change; Empty; Empty2; Empty3; runfreq;freqvsR;Amps;Amps2;RateField;
-dt = dt*1e5
-savefig(p3, "Frequency of hop Vs R, F = $ExtField ")
-plot!(p2,title = "Evolution of Active PES", xlabel = "Time, $dt fs", ylabel = "Energy, eV")
-savefig(p2, "Energy Surfaces Vs Time, T = $temp K")
+Mean_pos;
+
+writedlm("Num_Hops_per_Field.txt", FieldFreqs)
+writedlm("Rate_Hops_per_Field.txt", RateField)
+writedlm("Freq_Hops_Histogram.txt", freqvsR)
+
 #plot(KE); plot!(PE); plot!(TE); plot!(Ee)

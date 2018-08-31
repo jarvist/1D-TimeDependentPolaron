@@ -42,7 +42,18 @@ function diabatic_potential(alpha::Float64, tau::Float64, overlap::Float64)
     dpx = function (R) return -tau*(overlap^2+1) end
     return dpl, dpr, dpx
 end
-
+function diabatic_potential(alpha::Float64,alpha2::Float64, tau::Float64, overlap::Float64)
+    dpl = function (R) return -R/2*(alpha-alpha2*abs(overlap)^2)-tau*(overlap+conj(overlap)) end
+    dpr = function (R) return R/2*(alpha2-alpha*abs(overlap)^2)-tau*(overlap+conj(overlap)) end
+    dpx = function (R) return -tau*(overlap^2+1) end
+    return dpl, dpr, dpx
+end
+function diabatic_potential(alpha::Float64,alpha2::Function, tau::Float64, overlap::Function)
+    dpl = function (R) return -R/2*(alpha-alpha2(R)*abs(overlap(R))^2)-tau*(overlap(R)+conj(overlap(R))) end
+    dpr = function (R) return R/2*(alpha2(-R)-alpha*abs(overlap(-R))^2)-tau*(overlap(-R)+conj(overlap(-R))) end
+    dpx = function (R) return -tau*(overlap(R)^2+1) end
+    return dpl, dpr, dpx
+end
 
 """
 Function to diagonalise the diabatic potential
