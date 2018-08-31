@@ -21,6 +21,7 @@ temp =9000
 kb = 8.625000000000001e-5 # eV/Kelvin
 R_0  = 4.0
 global mean_last
+F_min = -0.00; dF = 0.001; F_max = 0.00
 #R_n = R_0 + sqrt(kb*temp/K); xr = abs(R_n); xl = 0; v_0 = sqrt(1.6e8/1.66*kb*temp/M);  # [A]
 cycles = 1; T = 2e-2; dt = 1e-6; ddt = 1e-6 #
 # dt = 1 = 0.1ns (use dt = 1e-10 to balance Angstrom)
@@ -32,11 +33,11 @@ V_change = zeros(N); Empty = zeros(N); Empty2 = zeros(N); Empty3 = zeros(N); Amp
 Empty2 = complex(Empty2); runfreq = zeros(N); Amps2 = zeros(N); temporary = 0; FieldCount = 0
 freqvsR = Dict{Float64,Int64}();RateField = Dict{Float64,Float64}();FieldFreqs = Dict{Float64,Int64}();
 
-if Base.Filesystem.isdir("$temp, from0.1_0.01 field divisions_31_08")
-    Base.Filesystem.rm("$temp, from0.1_0.01 field divisions_31_08", recursive = true)
+if Base.Filesystem.isdir("$temp, $F_min:$dF:$F_max")
+    Base.Filesystem.rm("$temp, $F_min:$dF:$F_max", recursive = true)
 end
-Base.Filesystem.mkdir("$temp, from0.1_0.01 field divisions_31_08")
-Base.Filesystem.cd("$temp, from0.1_0.01 field divisions_31_08")
+Base.Filesystem.mkdir("$temp, $F_min:$dF:$F_max")
+Base.Filesystem.cd("$temp, $F_min:$dF:$F_max")
 
 
 # p1 = plot(apG, color = :blue, label = "Adiabatic PES for ground state", linewidth = 5)
@@ -62,8 +63,8 @@ apG(R) = H_aD(R)[1]; apE(R) = H_aD(R)[4]
 
 p2 = plot()
 p3 = scatter()
-Mean_pos = zeros(100)
-for ExtField in -0.1:0.01:0.1
+Mean_pos = zeros(Int((F_max-F_min)/dF+1))
+for ExtField in F_min:dF:F_max
     FieldCount+=1
     # Generate diabatic electonic states and form of their derivative
     #alpha_k(R) = alpha+ExtField*R
@@ -217,16 +218,13 @@ for ExtField in -0.1:0.01:0.1
         if l == cycles
             APG = [apG(pos) for pos in Empty]
             APE = [apE(pos) for pos in Empty]
-            writedlm("APE, External Field = $ExtField", APE)
-            writedlm("APG, External Field = $ExtField", APG)
-            writedlm("Active Surface, External Field = $ExtField", En)
-            writedlm("Amplitude of state, External Field = $ExtField", Amps)
+            writedlm("data, External Field = $ExtField", [APE,APG,En,Amps,Empty,PE,KE,Ee,V_change])
         end
         temporary+=sum(Empty3)
     end
 
     Mean_pos[FieldCount] = mean_last
-    RateField[ExtField] = temporary/cycles
+    RateField[ExtField] = temporary/cyclesin
     num = 0
 
     # Max = sort(collect(freqvsR), by = tuple -> last(tuple))
@@ -247,7 +245,6 @@ for ExtField in -0.1:0.01:0.1
     end
    FieldFreqs[ExtField] = num
 end
-TE = KE + PE + Ee;
 Ee; V_change; Empty; Empty2; Empty3; runfreq;freqvsR;Amps;Amps2;RateField;
 Mean_pos;
 
